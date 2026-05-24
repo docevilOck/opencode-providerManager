@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
@@ -40,6 +40,8 @@ describe('loadProviderManagerData', () => {
       protocolChanged: false
     }, [])
     expect(providers[0]?.name).toBe('OpenAI')
+    const auth = JSON.parse(await readFile(join(root, 'auth.json'), 'utf8'))
+    expect(auth.OpenAI).toEqual({ apiKey: 'secret' })
   })
 
   it('saves agent model config to original global source', async () => {
@@ -47,7 +49,7 @@ describe('loadProviderManagerData', () => {
     await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
     const data = await loadProviderManagerData(root, [])
     await saveAgentModelConfig(root, data.snapshot, 'reviewer', { provider: 'OpenAI', model: 'gpt-5' })
-    const jsonc = JSON.parse(await import('node:fs/promises').then((fs) => fs.readFile(join(root, 'opencode.jsonc'), 'utf8')))
+    const jsonc = JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8'))
     expect(jsonc.agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5' })
   })
 })

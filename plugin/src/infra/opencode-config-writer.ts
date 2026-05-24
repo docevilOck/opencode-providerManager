@@ -22,6 +22,16 @@ export async function writeProvidersConfig(root: string, providers: unknown): Pr
   await writeJson(paths.providersJson, providers)
 }
 
+export async function writeAuthConfig(root: string, auth: unknown): Promise<void> {
+  const paths = resolveOpencodePaths(root)
+  await writeJson(paths.authJson, auth)
+}
+
+export async function writeSettingsConfig(root: string, settings: unknown): Promise<void> {
+  const paths = resolveOpencodePaths(root)
+  await writeJson(paths.settingsJson, settings)
+}
+
 async function resolveGlobalConfigWritePath(root: string, preferredSource?: 'json' | 'jsonc' | 'missing'): Promise<string> {
   const paths = resolveOpencodePaths(root)
   if (preferredSource === 'jsonc') return paths.globalOpencodeJsonc

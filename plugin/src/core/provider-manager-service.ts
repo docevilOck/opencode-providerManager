@@ -1,5 +1,5 @@
 import { readOpencodeConfigSnapshot } from '../infra/opencode-config-reader.js'
-import { writeGlobalAgentConfig, writeProvidersConfig } from '../infra/opencode-config-writer.js'
+import { writeAuthConfig, writeGlobalAgentConfig, writeProvidersConfig, writeSettingsConfig } from '../infra/opencode-config-writer.js'
 import type { AgentModelSummary } from '../types/agent.js'
 import type { ManagedProviderSummary, OpencodeConfigSnapshot, ProviderEditDraft } from '../types/provider.js'
 import type { PageShellState } from '../types/tui.js'
@@ -43,15 +43,26 @@ export async function saveProviderDraft(root: string, draft: ProviderEditDraft, 
   if (issues.length > 0) {
     throw new Error(issues.map((issue) => issue.code).join(','))
   }
-  const providersJson: Record<string, unknown> = Object.fromEntries(existingProviders.filter((provider) => provider.name !== draft.originalName).map((provider) => [provider.name, provider]))
+  const current = await readOpencodeConfigSnapshot(root, [])
+  const providersJson = typeof current.providersJson === 'object' && current.providersJson !== null ? { ...(current.providersJson as Record<string, unknown>) } : {}
+  const authJson = typeof current.authJson === 'object' && current.authJson !== null ? { ...(current.authJson as Record<string, unknown>) } : {}
+  const settingsJson = typeof current.settingsJson === 'object' && current.settingsJson !== null ? { ...(current.settingsJson as Record<string, unknown>) } : {}
+  if (draft.originalName && draft.originalName !== draft.name) {
+    delete providersJson[draft.originalName]
+    delete authJson[draft.originalName]
+  }
   providersJson[draft.name] = {
     baseUrl: draft.baseUrl,
     apiType: draft.apiType,
     models: draft.models,
     defaultModel: draft.defaultModel
   }
+  authJson[draft.name] = { apiKey: draft.apiKey }
   await writeProvidersConfig(root, providersJson)
-  return normalizeProviders(providersJson, {}, {})
+  await writeAuthConfig(root, authJson)
+  await writeSettingsConfig(root, settingsJson)
+  const refreshed = await readOpencodeConfigSnapshot(root, [])
+  return normalizeProviders(refreshed.providersJson, refreshed.settingsJson, refreshed.authJson)
 }
 
 export async function saveAgentModelConfig(root: string, snapshot: OpencodeConfigSnapshot, agentName: string, config: Record<string, unknown>): Promise<void> {

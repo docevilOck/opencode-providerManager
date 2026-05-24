@@ -41,4 +41,11 @@ describe('opencode config reader', () => {
     expect(snapshot.globalOpencodeSource).toBe('jsonc')
     expect(snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { model: 'gpt-5' } } })
   })
+
+  it('keeps comment markers inside json strings', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.jsonc'), JSON.stringify({ agent: { reviewer: { prompt: 'a // b /* c */', model: 'gpt-5' } } }))
+    const snapshot = await readOpencodeConfigSnapshot(root, [])
+    expect(snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { prompt: 'a // b /* c */', model: 'gpt-5' } } })
+  })
 })
