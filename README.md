@@ -29,3 +29,18 @@
 2. 确定 opencode plugin 的目录结构、入口形式和配置读写方式
 3. 将现有历史扩展设计文档逐步迁移为 plugin 视角的规范文档
 4. 补齐 `plugin/` 目录初始化代码和最小可运行骨架
+
+## Plugin 开发验证
+
+Provider Manager 插件源码位于 `plugin/`。
+
+常用命令：
+
+```bash
+cd plugin
+npm install
+npm test
+npm run build
+```
+
+当前实现覆盖 `/provider` 入口、配置读取、provider 标准化、page shell 状态、provider/agent 列表渲染、agent 模型选择弹窗状态和配置写回最小闭环。
