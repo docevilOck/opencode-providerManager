@@ -4,7 +4,7 @@ import type { PageShellState } from '../types/tui.js'
 import { renderAgentModelConfigScreen } from './agent-model-config-screen.js'
 import { renderSidebar } from './page-sidebar.js'
 import { renderProviderHomeScreen } from './provider-home-screen.js'
-import { saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
+import { reloadProviderManagerData, saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
 import type { AgentModelDraft } from '../types/agent.js'
 import type { ProviderEditDraft } from '../types/provider.js'
 
@@ -25,17 +25,27 @@ export function renderProviderManagerShell(view: ProviderManagerShellView): stri
   return [...sidebar, ...content, view.shell.statusLine?.message ?? ''].filter(Boolean).join('\n')
 }
 
-export async function handleProviderSaveAction(root: string, view: ProviderManagerData, draft: ProviderEditDraft): Promise<ProviderManagerData> {
+export async function handleProviderSaveAction(root: string, view: ProviderManagerData, draft: ProviderEditDraft, builtinAgents: unknown[] = view.snapshot.builtinAgents): Promise<ProviderManagerData> {
   const providers = await saveProviderDraft(root, draft, view.providers)
-  return { ...view, providers }
+  const selectedIndex = Math.max(0, providers.findIndex((provider) => provider.name.toLowerCase() === draft.name.toLowerCase()))
+  const shell = {
+    ...view.shell,
+    activePage: 'provider' as const,
+    pageStates: {
+      ...view.shell.pageStates,
+      provider: { ...view.shell.pageStates.provider, selectedIndex }
+    }
+  }
+  const refreshed = await reloadProviderManagerData(root, builtinAgents, shell)
+  return { ...refreshed, providers, shell }
 }
 
-export async function handleAgentModelConfirmAction(root: string, view: ProviderManagerData, draft: AgentModelDraft): Promise<ProviderManagerData> {
+export async function handleAgentModelConfirmAction(root: string, view: ProviderManagerData, draft: AgentModelDraft, builtinAgents: unknown[] = view.snapshot.builtinAgents): Promise<ProviderManagerData> {
   if (!draft.provider || !draft.model) throw new Error('agent model config is incomplete')
   await saveAgentModelConfig(root, view.snapshot, draft.agentName, {
     provider: draft.provider,
     model: draft.model,
     ...(draft.reasoningEffort ? { reasoningEffort: draft.reasoningEffort } : {})
   })
-  return view
+  return reloadProviderManagerData(root, builtinAgents, view.shell)
 }

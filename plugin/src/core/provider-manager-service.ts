@@ -68,3 +68,8 @@ export async function saveProviderDraft(root: string, draft: ProviderEditDraft, 
 export async function saveAgentModelConfig(root: string, snapshot: OpencodeConfigSnapshot, agentName: string, config: Record<string, unknown>): Promise<void> {
   await writeGlobalAgentConfig(root, agentName, config, snapshot.globalOpencodeSource)
 }
+
+export async function reloadProviderManagerData(root: string, builtinAgents: unknown[], shell: PageShellState): Promise<ProviderManagerData> {
+  const data = await loadProviderManagerData(root, builtinAgents)
+  return { ...data, shell }
+}

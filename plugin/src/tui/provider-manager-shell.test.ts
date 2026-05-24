@@ -31,7 +31,7 @@ describe('renderProviderManagerShell', () => {
   it('connects provider save action to config files', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     const view = await loadProviderManagerData(root, [])
-    await handleProviderSaveAction(root, view, {
+    const next = await handleProviderSaveAction(root, view, {
       originalName: null,
       name: 'OpenAI',
       baseUrl: 'https://api.openai.com/v1',
@@ -46,13 +46,16 @@ describe('renderProviderManagerShell', () => {
     })
     expect(JSON.parse(await readFile(join(root, 'providers.json'), 'utf8')).OpenAI.baseUrl).toBe('https://api.openai.com/v1')
     expect(JSON.parse(await readFile(join(root, 'auth.json'), 'utf8')).OpenAI.apiKey).toBe('secret')
+    expect(next.snapshot.authJson).toEqual({ OpenAI: { apiKey: 'secret' } })
+    expect(next.providers[0]?.name).toBe('OpenAI')
+    expect(next.shell.pageStates.provider.selectedIndex).toBe(0)
   })
 
   it('connects agent model confirm action to global agent config', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
     const view = await loadProviderManagerData(root, [])
-    await handleAgentModelConfirmAction(root, view, {
+    const next = await handleAgentModelConfirmAction(root, view, {
       agentName: 'reviewer',
       provider: 'OpenAI',
       model: 'gpt-5',
@@ -63,5 +66,8 @@ describe('renderProviderManagerShell', () => {
       selectedIndex: 0
     })
     expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' })
+    expect(next.snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' } } })
+    expect(next.agents[0]?.name).toBe('reviewer')
+    expect(next.agents[0]?.status).toBe('override')
   })
 })
