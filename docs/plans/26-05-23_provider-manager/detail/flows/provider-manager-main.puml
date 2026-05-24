@@ -1,0 +1,80 @@
+@startuml
+title Provider Manager Main Implementation Flow
+
+start
+:Receive /provider command;
+:Read opencode config files;
+:Build OpencodeConfigSnapshot;
+
+if (config read ok?) then (yes)
+  :Normalize ManagedProviderSummary[];
+  :Merge AgentModelSummary[];
+  :Create PageShellState;
+  :Render provider page with sidebar focus;
+else (no)
+  :Create PageShellState;
+  :Render provider error state;
+  stop
+endif
+
+while (plugin session open?) is (yes)
+  :Receive key event;
+  if (focusRegion?) then (sidebar)
+    if (key?) then (Up/Down)
+      :Move sidebarCursorPage;
+      :Update statusLine if cursor != activePage;
+    elseif (Enter)
+      :Save old PageContentState;
+      :activePage = sidebarCursorPage;
+      :Restore new PageContentState;
+      :focusRegion = content;
+    elseif (esc)
+      stop
+    endif
+  elseif (content)
+    if (activePage?) then (provider)
+      if (provider key?) then (Enter/Edit)
+        :Create ProviderEditDraft;
+        :Edit fields and modal drafts;
+        if (Ctrl+S?) then (yes)
+          :Validate ProviderEditDraft;
+          if (valid?) then (yes)
+            :Write provider config;
+            :Reload provider summaries;
+            :Return provider list;
+          else (no)
+            :Render validationErrors;
+          endif
+        endif
+      elseif (esc)
+        :focusRegion = sidebar;
+        :sidebarCursorPage = activePage;
+      endif
+    else (agents)
+      if (agent key?) then (Enter)
+        :Build ModelOptionSet;
+        :Create AgentModelDraft;
+        :Select provider -> model -> reasoning;
+        if (confirmed?) then (yes)
+          :Write global agent config;
+          :Reload AgentModelSummary[];
+          :Return agents list;
+        else (cancel)
+          :Discard AgentModelDraft;
+        endif
+      elseif (esc)
+        :focusRegion = sidebar;
+        :sidebarCursorPage = activePage;
+      endif
+    endif
+  else (modal)
+    :Dispatch by modalState.kind;
+    if (modal closed?) then (yes)
+      :modalState = null;
+      :focusRegion = content;
+    endif
+  endif
+endwhile (no)
+
+stop
+@enduml
