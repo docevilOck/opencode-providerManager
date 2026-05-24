@@ -10,6 +10,31 @@ describe('provider command session', () => {
     expect(typeof plugin.tui).toBe('function')
   })
 
+  it('registers a /provider slash command through the TUI keymap', async () => {
+    let command: { slashName?: string; slashAliases?: string[]; run: () => Promise<void> | void } | undefined
+    let toastMessage = ''
+
+    await plugin.tui({
+      keymap: {
+        registerLayer: (layer) => {
+          command = layer.commands[0]
+          return () => {}
+        }
+      },
+      ui: {
+        dialog: { clear: () => {} },
+        toast: (input) => {
+          toastMessage = input.message
+        }
+      }
+    })
+
+    expect(command?.slashName).toBe('provider')
+    expect(command?.slashAliases).toEqual(['providers'])
+    await command?.run()
+    expect(toastMessage).toContain('No providers configured')
+  })
+
   it('exposes runtime save handlers reachable from /provider command', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     let handler: (() => Promise<unknown>) | undefined

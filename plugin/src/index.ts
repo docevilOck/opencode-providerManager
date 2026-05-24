@@ -3,25 +3,25 @@ import { handleAgentModelConfirmAction, handleProviderSaveAction, renderProvider
 import type { AgentModelDraft } from './types/agent.js'
 import type { ProviderEditDraft } from './types/provider.js'
 
-type LegacyTuiCommandDialog = {
-  clear?: () => void
-}
-
-type LegacyTuiCommand = {
+type ProviderManagerTuiCommand = {
+  name: string
   title: string
-  value: string
+  desc?: string
   description?: string
+  namespace?: string
   category?: string
-  slash?: { name: string; aliases?: string[] }
-  onSelect?: (dialog?: LegacyTuiCommandDialog) => void | Promise<void>
+  slashName?: string
+  slashAliases?: string[]
+  run: () => void | Promise<void>
 }
 
 type ProviderManagerTuiApi = {
-  command?: {
-    register: (commands: () => LegacyTuiCommand[]) => () => void
+  keymap?: {
+    registerLayer: (layer: { commands: ProviderManagerTuiCommand[]; bindings?: unknown[] }) => () => void
   }
   ui?: {
     toast?: (input: { variant: 'info' | 'error'; title: string; message: string; duration?: number }) => void
+    dialog?: { clear?: () => void }
   }
 }
 
@@ -62,15 +62,18 @@ export function registerProviderManagerPlugin(ctx: PluginContext) {
 }
 
 async function tui(api: ProviderManagerTuiApi) {
-  api.command?.register(() => [
-    {
+  api.keymap?.registerLayer({
+    commands: [{
+      name: 'provider-manager.open',
       title: 'Provider Manager',
-      value: 'provider-manager.open',
+      desc: 'Inspect configured providers and agent models',
       description: 'Inspect configured providers and agent models',
+      namespace: 'palette',
       category: 'Provider',
-      slash: { name: 'provider', aliases: ['providers'] },
-      onSelect: async (dialog) => {
-        dialog?.clear?.()
+      slashName: 'provider',
+      slashAliases: ['providers'],
+      run: async () => {
+        api.ui?.dialog?.clear?.()
         const session = await createProviderManagerSession()
         api.ui?.toast?.({
           variant: 'info',
@@ -79,8 +82,9 @@ async function tui(api: ProviderManagerTuiApi) {
           duration: 5000
         })
       }
-    }
-  ])
+    }],
+    bindings: []
+  })
 }
 
 export default {
