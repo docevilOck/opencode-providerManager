@@ -12,4 +12,15 @@ describe('renderProviderManagerShell', () => {
     expect(output).toContain('>* provider')
     expect(output).toContain('No providers configured')
   })
+
+  it('renders config loading errors inside shell', () => {
+    const output = renderProviderManagerShell({
+      shell: createInitialPageShellState(),
+      providers: [],
+      agents: [],
+      error: 'invalid config'
+    })
+    expect(output).toContain('>* provider')
+    expect(output).toContain('Error: invalid config')
+  })
 })

@@ -9,10 +9,12 @@ export type ProviderManagerShellView = {
   shell: PageShellState
   providers: ManagedProviderSummary[]
   agents: AgentModelSummary[]
+  error?: string
 }
 
 export function renderProviderManagerShell(view: ProviderManagerShellView): string {
   const sidebar = renderSidebar(view.shell.pages, view.shell.activePage, view.shell.sidebarCursorPage)
+  if (view.error) return [...sidebar, `Error: ${view.error}`].join('\n')
   const pageState = view.shell.pageStates[view.shell.activePage]
   const content = view.shell.activePage === 'provider'
     ? renderProviderHomeScreen(view.providers, pageState.selectedIndex)

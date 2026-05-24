@@ -33,4 +33,12 @@ describe('opencode config reader', () => {
     const snapshot = await readOpencodeConfigSnapshot(root, [])
     expect(snapshot.providersJson).toEqual({ OpenAI: { baseUrl: 'https://api.openai.com/v1' } })
   })
+
+  it('reads opencode.jsonc with comments when json is absent', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.jsonc'), '{\n  // agent config\n  "agent": { "reviewer": { "model": "gpt-5" } }\n}')
+    const snapshot = await readOpencodeConfigSnapshot(root, [])
+    expect(snapshot.globalOpencodeSource).toBe('jsonc')
+    expect(snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { model: 'gpt-5' } } })
+  })
 })

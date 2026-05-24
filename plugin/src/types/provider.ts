@@ -58,6 +58,7 @@ export type OpencodeConfigSnapshot = {
   settingsJson: unknown
   pluginJson: unknown
   globalOpencodeJson: unknown
+  globalOpencodeSource: 'json' | 'jsonc' | 'missing'
   builtinAgents: unknown[]
   loadedAt: number
 }
