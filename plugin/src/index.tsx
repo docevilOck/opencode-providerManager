@@ -16,6 +16,10 @@ type ProviderManagerTuiCommand = {
 }
 
 type ProviderManagerTuiApi = {
+  route?: {
+    register: (routes: Array<{ name: string; render: (input: { params?: Record<string, unknown> }) => unknown }>) => () => void
+    navigate: (name: string, params?: Record<string, unknown>) => void
+  }
   keymap?: {
     registerLayer: (layer: { commands: ProviderManagerTuiCommand[]; bindings?: unknown[] }) => () => void
   }
@@ -61,7 +65,25 @@ export function registerProviderManagerPlugin(ctx: PluginContext) {
   })
 }
 
+const PROVIDER_MANAGER_ROUTE = 'provider-manager'
+
+function ProviderManagerScreen(props: { content?: unknown }) {
+  const content = typeof props.content === 'string' ? props.content : 'Provider Manager is loading...'
+  const lines = content.split('\n')
+
+  return (
+    <box width="100%" height="100%" flexDirection="column" paddingTop={1} paddingLeft={2} paddingRight={2}>
+      <text fg="cyan">Provider Manager</text>
+      <box flexDirection="column" paddingTop={1}>
+        {lines.map((line) => <text>{line || ' '}</text>)}
+      </box>
+    </box>
+  )
+}
+
 async function tui(api: ProviderManagerTuiApi) {
+  api.route?.register([{ name: PROVIDER_MANAGER_ROUTE, render: ({ params }) => <ProviderManagerScreen content={params?.['content']} /> }])
+
   api.keymap?.registerLayer({
     commands: [{
       name: 'provider-manager.open',
@@ -75,12 +97,7 @@ async function tui(api: ProviderManagerTuiApi) {
       run: async () => {
         api.ui?.dialog?.clear?.()
         const session = await createProviderManagerSession()
-        api.ui?.toast?.({
-          variant: 'info',
-          title: 'Provider Manager',
-          message: session.render(),
-          duration: 5000
-        })
+        api.route?.navigate(PROVIDER_MANAGER_ROUTE, { content: session.render() })
       }
     }],
     bindings: []

@@ -12,9 +12,17 @@ describe('provider command session', () => {
 
   it('registers a /provider slash command through the TUI keymap', async () => {
     let command: { slashName?: string; slashAliases?: string[]; run: () => Promise<void> | void } | undefined
-    let toastMessage = ''
+    let routeName = ''
+    let routeContent = ''
 
     await plugin.tui({
+      route: {
+        register: () => () => {},
+        navigate: (name, params) => {
+          routeName = name
+          routeContent = typeof params?.['content'] === 'string' ? params['content'] : ''
+        }
+      },
       keymap: {
         registerLayer: (layer) => {
           command = layer.commands[0]
@@ -22,17 +30,15 @@ describe('provider command session', () => {
         }
       },
       ui: {
-        dialog: { clear: () => {} },
-        toast: (input) => {
-          toastMessage = input.message
-        }
+        dialog: { clear: () => {} }
       }
     })
 
     expect(command?.slashName).toBe('provider')
     expect(command?.slashAliases).toEqual(['providers'])
     await command?.run()
-    expect(toastMessage).toContain('No providers configured')
+    expect(routeName).toBe('provider-manager')
+    expect(routeContent).toContain('No providers configured')
   })
 
   it('exposes runtime save handlers reachable from /provider command', async () => {
