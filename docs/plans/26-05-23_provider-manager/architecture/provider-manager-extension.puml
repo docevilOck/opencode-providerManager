@@ -1,0 +1,81 @@
+@startuml
+title Provider Manager Plugin Architecture
+
+package "opencode runtime" {
+  [opencode slash router] as router
+  [Plugin entry\nindex.ts] as entry
+  [ctx.ui] as ui
+  [registerCommand] as registerCommand
+  [registerProvider] as registerProvider
+  [builtin agents] as builtinAgents
+}
+
+package "provider-manager plugin" {
+  [Command handlers] as commands
+  [ProviderManagerShell\nactivePage + focusRegion] as shell
+  [PageStateService\nsidebar cursor + page states] as pageState
+  [ProviderHomeScreen] as providerHome
+  [ProviderEditScreen] as providerEdit
+  [AgentModelConfigScreen] as agentScreen
+  [AgentModelPickerModal\nprovider -> model -> effort] as agentModal
+  [ProviderManagerService] as service
+  [AgentModelConfigService] as agentService
+  [AgentModelOptionService] as optionService
+  [ProviderRegistryStore] as store
+  [ProviderNormalizer] as normalizer
+  [ProviderValidator] as validator
+  [ConnectionTester] as tester
+  [OpencodeConfigWriter] as writer
+}
+
+package "filesystem" {
+  [provider-manager.json] as pmjson
+  [~/.config/opencode/providers.json] as providersjson
+  [~/.config/opencode/settings.json] as settingsjson
+  [~/.config/opencode/auth.json] as authjson
+  [~/.config/opencode/opencode.json/jsonc\nagent config] as opencodejson
+}
+
+router --> entry
+entry --> registerCommand
+registerCommand --> commands
+
+commands --> ui
+commands --> shell
+shell --> ui
+shell --> pageState
+shell --> providerHome
+shell --> agentScreen
+
+providerHome --> service
+providerHome --> providerEdit
+providerEdit --> service
+agentScreen --> agentService
+agentScreen --> agentModal
+agentModal --> optionService
+
+service --> store
+service --> normalizer
+service --> validator
+service --> tester
+service --> writer
+service --> registerProvider
+
+agentService --> builtinAgents
+agentService --> opencodejson
+agentService --> writer
+agentService --> optionService
+optionService --> normalizer
+optionService --> providersjson
+optionService --> opencodejson
+
+store <--> pmjson
+writer --> providersjson
+writer --> settingsjson
+writer --> authjson
+writer --> opencodejson
+
+tester --> providersjson
+tester --> authjson
+
+@enduml
