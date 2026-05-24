@@ -7,6 +7,7 @@ import { renderProviderHomeScreen } from './provider-home-screen.js'
 import { reloadProviderManagerData, saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
 import type { AgentModelDraft } from '../types/agent.js'
 import type { ProviderEditDraft } from '../types/provider.js'
+import type { PageId } from '../types/tui.js'
 
 export type ProviderManagerShellView = {
   shell: PageShellState
@@ -25,15 +26,21 @@ export function renderProviderManagerShell(view: ProviderManagerShellView): stri
   return [...sidebar, ...content, view.shell.statusLine?.message ?? ''].filter(Boolean).join('\n')
 }
 
+function returnToPageContent(shell: PageShellState, activePage: PageId): PageShellState {
+  return {
+    ...shell,
+    activePage,
+    sidebarCursorPage: activePage,
+    focusRegion: 'content',
+    modalState: null
+  }
+}
+
 export async function handleProviderSaveAction(root: string, view: ProviderManagerData, draft: ProviderEditDraft, builtinAgents: unknown[] = view.snapshot.builtinAgents): Promise<ProviderManagerData> {
   const providers = await saveProviderDraft(root, draft, view.providers)
   const selectedIndex = Math.max(0, providers.findIndex((provider) => provider.name.toLowerCase() === draft.name.toLowerCase()))
   const shell = {
-    ...view.shell,
-    activePage: 'provider' as const,
-    sidebarCursorPage: 'provider' as const,
-    focusRegion: 'content' as const,
-    modalState: null,
+    ...returnToPageContent(view.shell, 'provider'),
     pageStates: {
       ...view.shell.pageStates,
       provider: { ...view.shell.pageStates.provider, selectedIndex }
@@ -50,12 +57,6 @@ export async function handleAgentModelConfirmAction(root: string, view: Provider
     model: draft.model,
     ...(draft.reasoningEffort ? { reasoningEffort: draft.reasoningEffort } : {})
   })
-  const shell = {
-    ...view.shell,
-    activePage: 'agents' as const,
-    sidebarCursorPage: 'agents' as const,
-    focusRegion: 'content' as const,
-    modalState: null
-  }
+  const shell = returnToPageContent(view.shell, 'agents')
   return reloadProviderManagerData(root, builtinAgents, shell)
 }
