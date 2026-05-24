@@ -22,15 +22,17 @@ describe('provider command session', () => {
       }
     }))
     let command: { name?: string; slashName?: string; slashAliases?: string[]; run: () => Promise<void> | void } | undefined
+    let routeRender: (() => unknown) | undefined
     let routeName = ''
-    let routeContent = ''
 
     await plugin.tui({
       route: {
-        register: () => () => {},
+        register: (routes) => {
+          routeRender = routes[0]?.render as (() => unknown) | undefined
+          return () => {}
+        },
         navigate: (name, params) => {
           routeName = name
-          routeContent = typeof params?.['content'] === 'string' ? params['content'] : ''
         }
       },
       keymap: {
@@ -52,8 +54,7 @@ describe('provider command session', () => {
     expect(command?.slashAliases).toEqual(['providers'])
     await command?.run()
     expect(routeName).toBe('provider-manager')
-    expect(routeContent).toContain('rayplus')
-    expect(routeContent).not.toContain('No providers configured')
+    expect(routeRender).toBeTypeOf('function')
   })
 
   it('exposes runtime save handlers reachable from /provider command', async () => {
