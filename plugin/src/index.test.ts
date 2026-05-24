@@ -2,9 +2,14 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import registerProviderManagerPlugin, { type ProviderManagerSession } from './index.js'
+import plugin, { registerProviderManagerPlugin, type ProviderManagerSession } from './index.js'
 
 describe('provider command session', () => {
+  it('exports a tui plugin object instead of a legacy server function', () => {
+    expect(plugin).toMatchObject({ id: 'provider-manager' })
+    expect(typeof plugin.tui).toBe('function')
+  })
+
   it('exposes runtime save handlers reachable from /provider command', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     let handler: (() => Promise<unknown>) | undefined
