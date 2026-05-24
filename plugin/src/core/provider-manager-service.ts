@@ -31,7 +31,7 @@ export async function loadProviderManagerData(root: string, builtinAgents: unkno
   }
   return {
     snapshot,
-    providers: normalizeProviders(snapshot.providersJson, snapshot.settingsJson, snapshot.authJson),
+    providers: normalizeProviders(snapshot.providersJson, snapshot.settingsJson, snapshot.authJson, snapshot.globalOpencodeJson),
     agents: mergeAgentModelSummaries(snapshot.builtinAgents as Array<{ name?: string; model?: string }>, snapshot.globalOpencodeJson),
     shell: createInitialPageShellState()
   }
@@ -62,7 +62,7 @@ export async function saveProviderDraft(root: string, draft: ProviderEditDraft, 
   await writeAuthConfig(root, authJson)
   await writeSettingsConfig(root, settingsJson)
   const refreshed = await readOpencodeConfigSnapshot(root, [])
-  return normalizeProviders(refreshed.providersJson, refreshed.settingsJson, refreshed.authJson)
+   return normalizeProviders(refreshed.providersJson, refreshed.settingsJson, refreshed.authJson, refreshed.globalOpencodeJson)
 }
 
 export async function saveAgentModelConfig(root: string, snapshot: OpencodeConfigSnapshot, agentName: string, config: Record<string, unknown>): Promise<void> {

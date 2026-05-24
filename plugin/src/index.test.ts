@@ -11,7 +11,17 @@ describe('provider command session', () => {
   })
 
   it('registers a /provider slash command through the TUI keymap', async () => {
-    let command: { slashName?: string; slashAliases?: string[]; run: () => Promise<void> | void } | undefined
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.json'), JSON.stringify({
+      model: 'rayplus/gpt-5.4',
+      provider: {
+        rayplus: {
+          options: { baseURL: 'https://rayplus.site/v1', apiKey: 'secret' },
+          models: { 'gpt-5.4': { name: 'GPT-5.4' } }
+        }
+      }
+    }))
+    let command: { name?: string; slashName?: string; slashAliases?: string[]; run: () => Promise<void> | void } | undefined
     let routeName = ''
     let routeContent = ''
 
@@ -25,12 +35,16 @@ describe('provider command session', () => {
       },
       keymap: {
         registerLayer: (layer) => {
-          command = layer.commands[0]
+          command = layer.commands.find((item) => item.name === 'provider-manager.open') ?? command
           return () => {}
         }
       },
       ui: {
         dialog: { clear: () => {} }
+      },
+      state: {
+        path: { config: root },
+        config: { agent: {} }
       }
     })
 
@@ -38,7 +52,8 @@ describe('provider command session', () => {
     expect(command?.slashAliases).toEqual(['providers'])
     await command?.run()
     expect(routeName).toBe('provider-manager')
-    expect(routeContent).toContain('No providers configured')
+    expect(routeContent).toContain('rayplus')
+    expect(routeContent).not.toContain('No providers configured')
   })
 
   it('exposes runtime save handlers reachable from /provider command', async () => {

@@ -31,7 +31,7 @@ export type ManagedProviderSummary = {
   isDefault: boolean
   authStatus: 'ok' | 'missing' | 'invalid'
   status: 'active' | 'ready' | 'warn' | 'error'
-  source: 'providers-json' | 'plugin-json'
+  source: 'providers-json' | 'plugin-json' | 'opencode-json'
   models: ProviderModelConfig[]
   createdOrder: number
 }

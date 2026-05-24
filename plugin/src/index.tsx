@@ -12,20 +12,35 @@ type ProviderManagerTuiCommand = {
   category?: string
   slashName?: string
   slashAliases?: string[]
+  enabled?: () => boolean
   run: () => void | Promise<void>
 }
 
+type ProviderManagerTuiDialogPrompt = (props: {
+  title: string
+  placeholder?: string
+  value?: string
+  onConfirm?: (value: string) => void
+  onCancel?: () => void
+}) => unknown
+
 type ProviderManagerTuiApi = {
   route?: {
+    readonly current?: { name?: string }
     register: (routes: Array<{ name: string; render: (input: { params?: Record<string, unknown> }) => unknown }>) => () => void
     navigate: (name: string, params?: Record<string, unknown>) => void
   }
   keymap?: {
-    registerLayer: (layer: { commands: ProviderManagerTuiCommand[]; bindings?: unknown[] }) => () => void
+    registerLayer: (layer: { enabled?: () => boolean; commands: ProviderManagerTuiCommand[]; bindings?: unknown[] }) => () => void
   }
   ui?: {
     toast?: (input: { variant: 'info' | 'error'; title: string; message: string; duration?: number }) => void
-    dialog?: { clear?: () => void }
+    DialogPrompt?: ProviderManagerTuiDialogPrompt
+    dialog?: { clear?: () => void; replace?: (render: () => unknown, onClose?: () => void) => void; setSize?: (size: 'small' | 'medium' | 'large') => void }
+  }
+  state?: {
+    path?: { config?: string; directory?: string }
+    config?: { agent?: Record<string, { model?: string }> }
   }
 }
 
@@ -81,6 +96,78 @@ function ProviderManagerScreen(props: { content?: unknown }) {
   )
 }
 
+function configRootFromApi(api: ProviderManagerTuiApi): string {
+  return api.state?.path?.config || api.state?.path?.directory || process.cwd()
+}
+
+function builtinAgentsFromApi(api: ProviderManagerTuiApi): unknown[] {
+  const agents = api.state?.config?.agent
+  if (!agents || typeof agents !== 'object') return []
+  return Object.entries(agents).map(([name, config]) => ({ name, model: config?.model }))
+}
+
+async function createSessionFromApi(api: ProviderManagerTuiApi): Promise<ProviderManagerSession> {
+  return createProviderManagerSession({ configRoot: configRootFromApi(api), builtinAgents: builtinAgentsFromApi(api) })
+}
+
+async function openProviderManager(api: ProviderManagerTuiApi): Promise<void> {
+  const session = await createSessionFromApi(api)
+  api.route?.navigate(PROVIDER_MANAGER_ROUTE, { content: session.render() })
+}
+
+function promptValue(api: ProviderManagerTuiApi, title: string, placeholder?: string): Promise<string | null> {
+  const DialogPrompt = api.ui?.DialogPrompt
+  if (!DialogPrompt || !api.ui?.dialog?.replace) return Promise.resolve(null)
+  api.ui.dialog.setSize?.('medium')
+  return new Promise((resolve) => {
+    api.ui?.dialog?.replace?.(
+      () => (
+        <DialogPrompt
+          title={title}
+          placeholder={placeholder}
+          onConfirm={(value) => {
+            api.ui?.dialog?.clear?.()
+            resolve(value.trim())
+          }}
+          onCancel={() => {
+            api.ui?.dialog?.clear?.()
+            resolve(null)
+          }}
+        />
+      ),
+      () => resolve(null)
+    )
+  })
+}
+
+async function addProvider(api: ProviderManagerTuiApi): Promise<void> {
+  const name = await promptValue(api, 'Provider name', 'openai')
+  if (!name) return
+  const baseUrl = await promptValue(api, 'Base URL', 'https://api.openai.com/v1')
+  if (!baseUrl) return
+  const apiKey = await promptValue(api, 'API key')
+  if (!apiKey) return
+  try {
+    const session = await createSessionFromApi(api)
+    const content = await session.handleProviderSave({
+      originalName: null,
+      name,
+      baseUrl,
+      apiType: 'openai-compatible-chat',
+      apiKey,
+      defaultModel: null,
+      models: [],
+      modelConfigDefaults: { contextWindow: '256k', maxOutput: '128k', inputTypes: ['text'], reasoningEfforts: ['minimal', 'low', 'medium', 'high', 'xhigh'] },
+      dirtyFields: new Set(),
+      validationErrors: [],
+      protocolChanged: false
+    })
+    api.route?.navigate(PROVIDER_MANAGER_ROUTE, { content })
+  } catch (error) {
+    api.ui?.toast?.({ variant: 'error', title: 'Provider Manager', message: error instanceof Error ? error.message : String(error), duration: 5000 })
+  }
+}
+
 async function tui(api: ProviderManagerTuiApi) {
   api.route?.register([{ name: PROVIDER_MANAGER_ROUTE, render: ({ params }) => <ProviderManagerScreen content={params?.['content']} /> }])
 
@@ -96,11 +183,34 @@ async function tui(api: ProviderManagerTuiApi) {
       slashAliases: ['providers'],
       run: async () => {
         api.ui?.dialog?.clear?.()
-        const session = await createProviderManagerSession()
-        api.route?.navigate(PROVIDER_MANAGER_ROUTE, { content: session.render() })
+        await openProviderManager(api)
       }
     }],
     bindings: []
+  })
+
+  api.keymap?.registerLayer({
+    enabled: () => api.route?.current?.name === PROVIDER_MANAGER_ROUTE,
+    commands: [
+      {
+        name: 'provider-manager.add',
+        title: 'Add provider',
+        desc: 'Add a provider to providers.json/auth.json',
+        category: 'Provider',
+        run: () => addProvider(api)
+      },
+      {
+        name: 'provider-manager.refresh',
+        title: 'Refresh providers',
+        desc: 'Reload provider manager config',
+        category: 'Provider',
+        run: () => openProviderManager(api)
+      }
+    ],
+    bindings: [
+      { key: 'a', cmd: 'provider-manager.add', desc: 'Add provider' },
+      { key: 'r', cmd: 'provider-manager.refresh', desc: 'Refresh providers' }
+    ]
   })
 }
 
