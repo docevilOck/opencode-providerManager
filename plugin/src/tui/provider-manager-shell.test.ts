@@ -31,6 +31,8 @@ describe('renderProviderManagerShell', () => {
   it('connects provider save action to config files', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     const view = await loadProviderManagerData(root, [])
+    view.shell.focusRegion = 'modal'
+    view.shell.modalState = { kind: 'protocol-select', selectedIndex: 1 }
     const next = await handleProviderSaveAction(root, view, {
       originalName: null,
       name: 'OpenAI',
@@ -48,6 +50,10 @@ describe('renderProviderManagerShell', () => {
     expect(JSON.parse(await readFile(join(root, 'auth.json'), 'utf8')).OpenAI.apiKey).toBe('secret')
     expect(next.snapshot.authJson).toEqual({ OpenAI: { apiKey: 'secret' } })
     expect(next.providers[0]?.name).toBe('OpenAI')
+    expect(next.shell.activePage).toBe('provider')
+    expect(next.shell.sidebarCursorPage).toBe('provider')
+    expect(next.shell.focusRegion).toBe('content')
+    expect(next.shell.modalState).toBeNull()
     expect(next.shell.pageStates.provider.selectedIndex).toBe(0)
   })
 
@@ -55,6 +61,23 @@ describe('renderProviderManagerShell', () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
     const view = await loadProviderManagerData(root, [])
+    view.shell.activePage = 'agents'
+    view.shell.sidebarCursorPage = 'agents'
+    view.shell.focusRegion = 'modal'
+    view.shell.modalState = {
+      kind: 'agent-model-picker',
+      draft: {
+        agentName: 'reviewer',
+        provider: null,
+        model: null,
+        reasoningEffort: null,
+        step: 'select-model',
+        searchText: '',
+        candidateItems: [],
+        selectedIndex: 0
+      }
+    }
+    view.shell.pageStates.agents.selectedIndex = 0
     const next = await handleAgentModelConfirmAction(root, view, {
       agentName: 'reviewer',
       provider: 'OpenAI',
@@ -69,5 +92,10 @@ describe('renderProviderManagerShell', () => {
     expect(next.snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' } } })
     expect(next.agents[0]?.name).toBe('reviewer')
     expect(next.agents[0]?.status).toBe('override')
+    expect(next.shell.activePage).toBe('agents')
+    expect(next.shell.sidebarCursorPage).toBe('agents')
+    expect(next.shell.focusRegion).toBe('content')
+    expect(next.shell.modalState).toBeNull()
+    expect(next.shell.pageStates.agents.selectedIndex).toBe(0)
   })
 })

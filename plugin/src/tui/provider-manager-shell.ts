@@ -31,6 +31,9 @@ export async function handleProviderSaveAction(root: string, view: ProviderManag
   const shell = {
     ...view.shell,
     activePage: 'provider' as const,
+    sidebarCursorPage: 'provider' as const,
+    focusRegion: 'content' as const,
+    modalState: null,
     pageStates: {
       ...view.shell.pageStates,
       provider: { ...view.shell.pageStates.provider, selectedIndex }
@@ -47,5 +50,12 @@ export async function handleAgentModelConfirmAction(root: string, view: Provider
     model: draft.model,
     ...(draft.reasoningEffort ? { reasoningEffort: draft.reasoningEffort } : {})
   })
-  return reloadProviderManagerData(root, builtinAgents, view.shell)
+  const shell = {
+    ...view.shell,
+    activePage: 'agents' as const,
+    sidebarCursorPage: 'agents' as const,
+    focusRegion: 'content' as const,
+    modalState: null
+  }
+  return reloadProviderManagerData(root, builtinAgents, shell)
 }

@@ -19,7 +19,7 @@ describe('provider command session', () => {
     const session = await handler?.() as ProviderManagerSession
     expect(session.render()).toContain('No providers configured')
 
-    await session.handleProviderSave({
+    const providerOutput = await session.handleProviderSave({
       originalName: null,
       name: 'OpenAI',
       baseUrl: 'https://api.openai.com/v1',
@@ -33,9 +33,10 @@ describe('provider command session', () => {
       protocolChanged: false
     })
     expect(JSON.parse(await readFile(join(root, 'auth.json'), 'utf8')).OpenAI.apiKey).toBe('secret')
+    expect(providerOutput).toContain('OpenAI')
 
     await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
-    await session.handleAgentModelConfirm({
+    const agentOutput = await session.handleAgentModelConfirm({
       agentName: 'reviewer',
       provider: 'OpenAI',
       model: 'gpt-5',
@@ -46,5 +47,8 @@ describe('provider command session', () => {
       selectedIndex: 0
     })
     expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' })
+    expect(agentOutput).toContain('reviewer')
+    expect(agentOutput).toContain('model: gpt-5')
+    expect(agentOutput).toContain('status: override')
   })
 })
