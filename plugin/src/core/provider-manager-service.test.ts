@@ -159,9 +159,9 @@ describe('loadProviderManagerData', () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
     const data = await loadProviderManagerData(root, [])
-    await saveAgentModelConfig(root, data.snapshot, 'reviewer', { provider: 'OpenAI', model: 'gpt-5' })
+    await saveAgentModelConfig(root, data.snapshot, 'reviewer', { model: 'OpenAI/gpt-5' })
     const jsonc = JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8'))
-    expect(jsonc.agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5' })
+    expect(jsonc.agent.reviewer).toEqual({ model: 'OpenAI/gpt-5' })
   })
 
   it('sets and protects default provider while deleting other providers', async () => {

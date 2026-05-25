@@ -131,9 +131,11 @@ describe('renderProviderManagerShell', () => {
       candidateItems: [],
       selectedIndex: 0
     })
-    expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' })
-    expect(next.snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' } } })
+    expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ model: 'OpenAI/gpt-5', reasoningEffort: 'high' })
+    expect(next.snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { model: 'OpenAI/gpt-5', reasoningEffort: 'high' } } })
     expect(next.agents[0]?.name).toBe('reviewer')
+    expect(next.agents[0]?.provider).toBe('OpenAI')
+    expect(next.agents[0]?.model).toBe('gpt-5')
     expect(next.agents[0]?.status).toBe('override')
     expect(next.shell.activePage).toBe('agents')
     expect(next.shell.sidebarCursorPage).toBe('agents')

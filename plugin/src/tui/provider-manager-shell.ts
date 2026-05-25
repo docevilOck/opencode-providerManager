@@ -63,8 +63,7 @@ export async function handleProviderSaveAction(root: string, view: ProviderManag
 export async function handleAgentModelConfirmAction(root: string, view: ProviderManagerData, draft: AgentModelDraft, builtinAgents: unknown[] = view.snapshot.builtinAgents): Promise<ProviderManagerData> {
   if (!draft.provider || !draft.model) throw new Error('agent model config is incomplete')
   await saveAgentModelConfig(root, view.snapshot, draft.agentName, {
-    provider: draft.provider,
-    model: draft.model,
+    model: `${draft.provider}/${draft.model}`,
     ...(draft.reasoningEffort ? { reasoningEffort: draft.reasoningEffort } : {})
   })
   const shell = returnToPageContent(view.shell, 'agents')

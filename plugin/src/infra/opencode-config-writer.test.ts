@@ -14,16 +14,16 @@ describe('opencode config writer', () => {
 
   it('writes global agent model override', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
-    await writeGlobalAgentConfig(root, 'reviewer', { provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' })
+    await writeGlobalAgentConfig(root, 'reviewer', { model: 'OpenAI/gpt-5', reasoningEffort: 'high' })
     const content = JSON.parse(await readFile(join(root, 'opencode.json'), 'utf8'))
-    expect(content.agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' })
+    expect(content.agent.reviewer).toEqual({ model: 'OpenAI/gpt-5', reasoningEffort: 'high' })
   })
 
   it('writes back to opencode.jsonc when that source is preferred', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
     await writeFile(join(root, 'opencode.jsonc'), '{\n  // keep source\n  "agent": {}\n}')
-    await writeGlobalAgentConfig(root, 'reviewer', { provider: 'OpenAI', model: 'gpt-5' }, 'jsonc')
+    await writeGlobalAgentConfig(root, 'reviewer', { model: 'OpenAI/gpt-5' }, 'jsonc')
     const jsonc = JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8'))
-    expect(jsonc.agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5' })
+    expect(jsonc.agent.reviewer).toEqual({ model: 'OpenAI/gpt-5' })
   })
 })

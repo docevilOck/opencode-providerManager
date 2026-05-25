@@ -143,7 +143,7 @@ describe('provider command session', () => {
       candidateItems: [],
       selectedIndex: 0
     })
-    expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high' })
+    expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ model: 'OpenAI/gpt-5', reasoningEffort: 'high' })
     expect(agentOutput).toContain('reviewer')
     expect(agentOutput).toContain('model: gpt-5')
     expect(agentOutput).toContain('status: override')
