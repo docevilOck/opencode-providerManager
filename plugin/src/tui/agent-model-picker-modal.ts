@@ -1,5 +1,6 @@
 import type { AgentModelDraft, ModelOptionSet } from '../types/agent.js'
 import type { ReasoningEffort } from '../types/provider.js'
+import { keyHint, titleLine } from './theme.js'
 
 function filterItems(draft: AgentModelDraft, items = draft.candidateItems): AgentModelDraft {
   const search = draft.searchText.trim().toLowerCase()
@@ -75,10 +76,10 @@ export function renderAgentModelPickerModal(draft: AgentModelDraft): string[] {
     ? draft.candidateItems.map((item, index) => `${index === draft.selectedIndex ? '>>' : '  '} ${item.label}`)
     : ['No matches found.']
   return [
-    title,
-    `Search: ${draft.searchText}`,
+    titleLine(title, draft.agentName),
+    `Search: ${draft.searchText || '-'}`,
     ...rows,
-    '[Up/Down] Move   [Enter] Select   [esc] Back'
+    keyHint('[Up/Down] Move  [Enter] Select  [esc] Back')
   ]
 }
 

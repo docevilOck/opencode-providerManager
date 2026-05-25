@@ -1,4 +1,5 @@
 import type { ProviderEditDraft, ProviderEditField } from '../types/provider.js'
+import { titleLine } from './theme.js'
 
 const FIELD_LINES = [
   { field: 'name', label: 'Name', value: (draft: ProviderEditDraft) => draft.name },
@@ -12,7 +13,7 @@ function maskApiKey(apiKey: string): string {
 }
 
 export function renderProviderEditScreen(draft: ProviderEditDraft, selectedField: ProviderEditField = 'name', editing?: { field: ProviderEditField; value: string }): string[] {
-  const lines = ['Edit Provider']
+  const lines = [titleLine('Edit Provider', draft.originalName ? 'existing' : 'new')]
   for (const item of FIELD_LINES) {
     const selected = item.field === selectedField
     const editingCurrent = editing?.field === item.field
@@ -21,7 +22,7 @@ export function renderProviderEditScreen(draft: ProviderEditDraft, selectedField
     lines.push(`${marker} ${item.label.padEnd(14)}: ${editingCurrent ? `[${value}]` : value}`)
     lines.push(...draft.validationErrors.filter((issue) => issue.field === item.field).map((issue) => `  ${issue.message}`))
   }
-  lines.push(`Models         : ${draft.models.length}`)
+  lines.push(`  Models        : ${draft.models.length}`)
   lines.push(...draft.validationErrors.filter((issue) => !issue.field).map((issue) => issue.message))
   return lines
 }

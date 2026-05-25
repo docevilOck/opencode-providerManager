@@ -149,8 +149,8 @@ describe('provider command session', () => {
     })
     expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ model: 'OpenAI/gpt-5', reasoningEffort: 'high' })
     expect(agentOutput).toContain('reviewer')
-    expect(agentOutput).toContain('model: OpenAI/gpt-5')
-    expect(agentOutput).toContain('status: override')
+    expect(agentOutput).toContain('OpenAI/gpt-5')
+    expect(agentOutput).toContain('override')
   })
 
   it('renders fetch models modal success state with existing models selected', () => {
@@ -194,7 +194,7 @@ describe('provider command session', () => {
       providerName: 'OpenAI',
       isDefault: true
     }, [])
-    expect(output).toContain('Delete Provider: OpenAI')
+    expect(output).toContain('Delete Provider  /  OpenAI')
     expect(output).toContain('Switch default provider before deleting this provider.')
     expect(output).toContain('[esc] Close')
   })
@@ -218,7 +218,7 @@ describe('provider command session', () => {
       providerNames: ['A', 'B'],
       agentNames: ['reviewer', 'planner']
     }, [])
-    expect(output).toContain('Switch Provider (2 agents)')
+    expect(output).toContain('Switch Provider (2 agents)  /  bulk')
     expect(output).toContain('  A')
     expect(output).toContain('> B')
   })

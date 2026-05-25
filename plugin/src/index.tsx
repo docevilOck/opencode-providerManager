@@ -12,6 +12,7 @@ import { backspaceAgentModelSearch, confirmAgentModelStep, createAgentModelDraft
 import { renderAgentRow } from './tui/agent-row.js'
 import { renderProviderEditScreen } from './tui/provider-edit-screen.js'
 import { renderProviderRow } from './tui/provider-row.js'
+import { keyHint, titleLine } from './tui/theme.js'
 import type { AgentModelDraft, AgentModelSummary, ModelOptionSet } from './types/agent.js'
 import type { ManagedProviderSummary, ProviderApiType, ProviderEditDraft, ProviderEditField, ProviderModelConfig, ProviderModelConfigDefaults } from './types/provider.js'
 import type { PageId, PageShellState } from './types/tui.js'
@@ -96,6 +97,16 @@ const MODEL_DEFAULT_FIELDS = ['contextWindow', 'maxOutput', 'inputTypes', 'minim
 const AGENT_SEARCH_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:/ '.split('')
 const CONTENT_WINDOW_SIZE = 8
 const execFileAsync = promisify(execFile)
+const TUI_COLOR = {
+  title: 'blue',
+  accent: 'cyan',
+  text: 'white',
+  muted: 'gray',
+  disabled: 'darkgray',
+  success: 'green',
+  warning: 'yellow',
+  danger: 'red'
+} as const
 
 function agentSearchCommandName(index: number): string {
   return `provider-manager.agent-modal.input.${index}`
@@ -316,11 +327,11 @@ function ProviderManagerRoute(props: { data: () => ProviderManagerData | null; p
 
   return (
     <box width="100%" height="100%" flexDirection="column" paddingTop={1} paddingLeft={2} paddingRight={2}>
-      <text fg="cyan">Provider Manager</text>
+      <text fg={TUI_COLOR.title}>Provider Manager  /  opencode</text>
       <box flexDirection="row" paddingTop={1} flexGrow={1}>
-        <box width={20} flexDirection="column" paddingRight={2}>
+        <box width={22} flexDirection="column" paddingRight={2}>
           {sidebarRows().map((row) => (
-            <text fg={row.cursor ? 'cyan' : row.active ? 'green' : 'white'}>
+            <text fg={row.cursor ? TUI_COLOR.accent : row.active ? TUI_COLOR.success : TUI_COLOR.muted}>
               {row.cursor ? '>' : ' '} {row.active ? '*' : ' '} {row.page}
             </text>
           ))}
@@ -333,7 +344,7 @@ function ProviderManagerRoute(props: { data: () => ProviderManagerData | null; p
             : <ProviderList providers={data()?.providers ?? []} selectedIndex={selectedProvider()} scrollOffset={providerScrollOffset()} runtimeStatuses={props.providerRuntimeStatuses()} />}
         </box>
       </box>
-      <text fg="gray">{statusLine(shell())}</text>
+      <text fg={TUI_COLOR.muted}>{statusLine(shell())}</text>
       <ModalView shell={shell} draft={props.providerDraft} fetchModelCandidates={props.fetchModelCandidates} modelDefaultsDraft={props.modelDefaultsDraft} onModelInput={props.onModelInput} onModelSubmit={props.onModelSubmit} />
     </box>
   )
@@ -347,7 +358,7 @@ function ModalView(props: { shell: () => PageShellState | undefined; draft: () =
   const lines = () => renderProviderManagerModalLines(props.shell()?.modalState ?? null, props.fetchModelCandidates(), props.modelDefaultsDraft())
   return (
     <box flexDirection="column" borderStyle={lines().length ? 'single' : undefined}>
-      {lines().map((line) => <text fg="yellow">{line}</text>)}
+      {lines().map((line, index) => <text fg={index === 0 ? TUI_COLOR.accent : line.startsWith('>') ? TUI_COLOR.accent : TUI_COLOR.text}>{line}</text>)}
     </box>
   )
 }
@@ -356,23 +367,23 @@ function ModelListModal(props: { modal: Extract<NonNullable<PageShellState['moda
   const rows = () => props.models.length ? props.models : []
   return (
     <box flexDirection="column" borderStyle="single">
-      <text fg="yellow">Models ({props.models.length})</text>
+      <text fg={TUI_COLOR.accent}>{titleLine(`Models (${props.models.length})`, 'provider')}</text>
       {props.modal.editing?.mode === 'add' ? (
         <box flexDirection="row">
-          <text fg="cyan">{'>>'} New Model: </text>
+          <text fg={TUI_COLOR.accent}>{'>>'} New Model: </text>
           <input focused value={props.modal.editing.value} maxLength={1000} onInput={props.onInput} onSubmit={props.onSubmit} />
         </box>
       ) : null}
       {rows().map((model, index) => (
         <box flexDirection="row">
-          <text fg={index === props.modal.selectedIndex ? 'cyan' : 'white'}>{index === props.modal.selectedIndex ? props.modal.editing?.mode === 'edit' ? '>>' : '>' : ' '} </text>
+          <text fg={index === props.modal.selectedIndex ? TUI_COLOR.accent : TUI_COLOR.muted}>{index === props.modal.selectedIndex ? props.modal.editing?.mode === 'edit' ? '>>' : '>' : ' '} </text>
           {props.modal.editing?.mode === 'edit' && index === props.modal.selectedIndex
             ? <input focused value={props.modal.editing.value} maxLength={1000} onInput={props.onInput} onSubmit={props.onSubmit} />
-            : <text fg="white">{props.modal.selectedModelIds.has(model.id) ? '[x]' : '[ ]'} {model.id}</text>}
+            : <text fg={index === props.modal.selectedIndex ? TUI_COLOR.accent : TUI_COLOR.text}>{props.modal.selectedModelIds.has(model.id) ? '[x]' : '[ ]'} {model.id}</text>}
         </box>
       ))}
-      {props.models.length < 1 && props.modal.editing?.mode !== 'add' ? <text fg="yellow">No models. Press [a] to add one.</text> : null}
-      <text fg="gray">[Up/Down] Move [Space] Toggle [Enter] Edit [a] Add [Ctrl+S] Save [esc] Close</text>
+      {props.models.length < 1 && props.modal.editing?.mode !== 'add' ? <text fg={TUI_COLOR.warning}>No models. Press [a] to add one.</text> : null}
+      <text fg={TUI_COLOR.muted}>{keyHint('[Up/Down] Move  [Space] Toggle  [Enter] Edit  [a] Add  [Ctrl+S] Save  [esc] Close')}</text>
     </box>
   )
 }
@@ -381,43 +392,43 @@ export function renderProviderManagerModalLines(modal: PageShellState['modalStat
   if (!modal) return []
   if (modal.kind === 'agent-model-picker') return renderAgentModelPickerModal(modal.draft)
   if (modal.kind === 'agent-provider-switch') return [
-    `Switch Provider (${modal.agentNames.length} agents)`,
+    titleLine(`Switch Provider (${modal.agentNames.length} agents)`, 'bulk'),
     ...(modal.providerNames.length
       ? modal.providerNames.map((name, index) => `${index === modal.selectedIndex ? '>' : ' '} ${name}`)
       : [modal.message ?? 'No provider can cover selected agent models.']),
-    '[Up/Down] Move   [Enter] Select   [esc] Close'
+    keyHint('[Up/Down] Move  [Enter] Select  [esc] Close')
   ]
-  if (modal.kind === 'provider-test') return ['Provider Test', modal.phase === 'testing' ? 'Testing...' : `Result: ${modal.phase}`, '[Enter] OK / [esc] Close']
+  if (modal.kind === 'provider-test') return [titleLine('Provider Test', modal.providerName), modal.phase === 'testing' ? 'Testing...' : `Result: ${modal.phase}`, keyHint('[Enter] OK  [esc] Close')]
   if (modal.kind === 'provider-delete-confirm') return [
-    `Delete Provider: ${modal.providerName}`,
+    titleLine('Delete Provider', modal.providerName),
     modal.isDefault ? 'Switch default provider before deleting this provider.' : '[Enter] Confirm Delete',
     '[esc] Close'
   ]
   if (modal.kind === 'leave-confirm') return ['Unsaved changes', '[Enter] Confirm', '[esc] Close']
-  if (modal.kind === 'protocol-select') return ['Select API Protocol', ...PROVIDER_API_TYPES.map((type, index) => `${index === modal.selectedIndex ? '>' : ' '} ${type}`), '[Up/Down] Move   [Enter] Select', '[esc] Close']
+  if (modal.kind === 'protocol-select') return [titleLine('Select API Protocol', 'provider'), ...PROVIDER_API_TYPES.map((type, index) => `${index === modal.selectedIndex ? '>' : ' '} ${type}`), keyHint('[Up/Down] Move  [Enter] Select'), '[esc] Close']
   if (modal.kind === 'model-list') return ['Models', '[Space] Toggle [Enter] Edit [a] Add [Ctrl+S] Save', '[esc] Close']
   if (modal.kind === 'model-config-defaults') {
     const defaults = modelDefaultsDraft ?? { contextWindow: '256k', maxOutput: '128k', inputTypes: ['text', 'image'], reasoningEfforts: ['minimal', 'low', 'medium', 'high', 'xhigh'] }
     const selected = modal.selectedField
     return [
-      'Model Config Defaults',
+      titleLine('Model Config Defaults', 'provider'),
       `${selected === 'contextWindow' ? '>' : ' '} Context Window Size : ${defaults.contextWindow}`,
       `${selected === 'maxOutput' ? '>' : ' '} Max Output Size     : ${defaults.maxOutput}`,
       `${selected === 'inputTypes' ? '>' : ' '} Input Type          : ${defaults.inputTypes.join(',')}`,
       'Reasoning Levels',
       ...(['minimal', 'low', 'medium', 'high', 'xhigh'] as const).map((effort) => `${selected === effort ? '>' : ' '}   ${defaults.reasoningEfforts.includes(effort) ? '[x]' : '[ ]'} ${effort}`),
-      '[Up/Down] Move [Enter] Edit [Space] Toggle',
-      '[Ctrl+S] Save [esc] Close'
+      keyHint('[Up/Down] Move  [Enter] Edit  [Space] Toggle'),
+      keyHint('[Ctrl+S] Save  [esc] Close')
     ]
   }
-  if (modal.phase === 'loading') return ['Fetch Models', 'Fetching models...', '[esc] Cancel']
-  if (modal.phase === 'failure') return ['Fetch Models', 'Failed to fetch models', ...(modal.message ? [modal.message] : []), '[Enter] OK [esc] Close']
+  if (modal.phase === 'loading') return [titleLine('Fetch Models', 'remote'), 'Fetching models...', '[esc] Cancel']
+  if (modal.phase === 'failure') return [titleLine('Fetch Models', 'remote'), 'Failed to fetch models', ...(modal.message ? [modal.message] : []), keyHint('[Enter] OK  [esc] Close')]
   return [
-    'Fetch Models',
+    titleLine('Fetch Models', 'remote'),
     `Available Models (${fetchModelCandidates.length})`,
     ...fetchModelCandidates.map((model, index) => `${index === modal.selectedIndex ? '>' : ' '} ${modal.selectedModelIds.has(model.id) ? '[x]' : '[ ]'} ${model.id}`),
-    '[Up/Down] Move [Space] Toggle [a] All',
-    '[Enter] Confirm [esc] Close'
+    keyHint('[Up/Down] Move  [Space] Toggle  [a] All'),
+    keyHint('[Enter] Confirm  [esc] Close')
   ]
 }
 
@@ -432,21 +443,21 @@ function ProviderEditPage(props: { draft: ProviderEditDraft; selectedField: Prov
   }))
   return (
     <box flexDirection="column">
-      <text fg="cyan">Edit Provider</text>
+      <text fg={TUI_COLOR.accent}>{titleLine('Edit Provider', props.draft.originalName ? 'existing' : 'new')}</text>
       {fields().map((item) => (
         <>
           <box flexDirection="row">
-            <text fg={item.editing ? 'cyan' : item.selected ? 'cyan' : 'white'}>{item.editing ? '>>' : item.selected ? '>' : ' '} {item.label.padEnd(14)}: </text>
+            <text fg={item.editing ? TUI_COLOR.accent : item.selected ? TUI_COLOR.accent : TUI_COLOR.muted}>{item.editing ? '>>' : item.selected ? '>' : ' '} {item.label.padEnd(14)}: </text>
             {item.editing
               ? <input focused value={item.value} maxLength={1000} onInput={props.onInput} onSubmit={props.onSubmit} />
-              : <text fg="white">{item.value}</text>}
+              : <text fg={TUI_COLOR.text}>{item.value}</text>}
           </box>
-          {item.errors.map((message) => <text fg="red">  {message}</text>)}
+          {item.errors.map((message) => <text fg={TUI_COLOR.danger}>  {message}</text>)}
         </>
       ))}
-      <text>Models         : {props.draft.models.length}</text>
-      {props.draft.validationErrors.filter((issue) => !issue.field).map((issue) => <text fg="red">{issue.message}</text>)}
-      <text fg="gray">{props.inlineEdit ? 'Editing: paste supported · Enter apply · Esc cancel' : `Selected: ${PROVIDER_FIELD_LABELS[props.selectedField]} · Enter edit · [p] Protocol · [f] Fetch Models · [e] Model Defaults · Ctrl+S save · Esc cancel`}</text>
+      <text fg={TUI_COLOR.text}>  Models        : {props.draft.models.length}</text>
+      {props.draft.validationErrors.filter((issue) => !issue.field).map((issue) => <text fg={TUI_COLOR.danger}>{issue.message}</text>)}
+      <text fg={TUI_COLOR.muted}>{props.inlineEdit ? keyHint('Editing: paste supported  [Enter] Apply  [esc] Cancel') : keyHint(`Selected: ${PROVIDER_FIELD_LABELS[props.selectedField]}  [Enter] Edit  [p] Protocol  [f] Fetch Models  [e] Model Defaults  [Ctrl+S] Save  [esc] Cancel`)}</text>
     </box>
   )
 }
@@ -457,8 +468,8 @@ function ProviderList(props: { providers: ManagedProviderSummary[]; selectedInde
   if (!hasProvider()) {
     return (
       <box flexDirection="column">
-        <text fg="cyan">Providers (0) Default: -</text>
-        <text fg="yellow">No providers configured. Press [a] to add one.</text>
+        <text fg={TUI_COLOR.accent}>{titleLine('Providers (0)', 'default -')}</text>
+        <text fg={TUI_COLOR.warning}>No providers configured.</text>
         <ProviderActionBar hasProvider={false} />
       </box>
     )
@@ -466,9 +477,9 @@ function ProviderList(props: { providers: ManagedProviderSummary[]; selectedInde
   const visibleProviders = () => props.providers.slice(props.scrollOffset, props.scrollOffset + CONTENT_WINDOW_SIZE)
   return (
     <box flexDirection="column">
-      <text fg="cyan">Providers ({props.providers.length}) Default: {defaultProvider()}</text>
+      <text fg={TUI_COLOR.accent}>{titleLine(`Providers (${props.providers.length})`, `default ${defaultProvider()}`)}</text>
       {visibleProviders().map((provider, index) => (
-        <text fg={props.scrollOffset + index === props.selectedIndex ? 'cyan' : 'white'}>
+        <text fg={props.scrollOffset + index === props.selectedIndex ? TUI_COLOR.accent : TUI_COLOR.text}>
           {renderProviderRow(provider, props.scrollOffset + index === props.selectedIndex)}
           {props.runtimeStatuses[provider.name] ? ` test:${props.runtimeStatuses[provider.name]}` : ''}
         </text>
@@ -481,28 +492,28 @@ function ProviderList(props: { providers: ManagedProviderSummary[]; selectedInde
 function ProviderActionBar(props: { hasProvider: boolean }) {
   return (
     <box flexDirection="row">
-      <text fg={props.hasProvider ? 'gray' : 'darkgray'}>[Enter] Edit  </text>
-      <text fg="gray">[a] Add  </text>
-      <text fg={props.hasProvider ? 'gray' : 'darkgray'}>[d] Delete  </text>
-      <text fg={props.hasProvider ? 'gray' : 'darkgray'}>[t] Test  </text>
-      <text fg={props.hasProvider ? 'gray' : 'darkgray'}>[s] Set Default  </text>
-      <text fg="darkgray">[f] Fetch Models (edit)</text>
+      <text fg={props.hasProvider ? TUI_COLOR.muted : TUI_COLOR.disabled}>[Enter] Edit  </text>
+      <text fg={TUI_COLOR.muted}>[a] Add  </text>
+      <text fg={props.hasProvider ? TUI_COLOR.muted : TUI_COLOR.disabled}>[d] Delete  </text>
+      <text fg={props.hasProvider ? TUI_COLOR.muted : TUI_COLOR.disabled}>[t] Test  </text>
+      <text fg={props.hasProvider ? TUI_COLOR.muted : TUI_COLOR.disabled}>[s] Default  </text>
+      <text fg={TUI_COLOR.disabled}>[f] Fetch Models</text>
     </box>
   )
 }
 
 function AgentList(props: { agents: AgentModelSummary[]; selectedIndex: number; scrollOffset: number; bulkEdit?: PageShellState['agentBulkEdit'] }) {
-  if (props.agents.length < 1) return <text fg="yellow">No agents available.</text>
+  if (props.agents.length < 1) return <text fg={TUI_COLOR.warning}>No agents available.</text>
   const visibleAgents = () => props.agents.slice(props.scrollOffset, props.scrollOffset + CONTENT_WINDOW_SIZE)
   return (
     <box flexDirection="column">
-      <text fg="cyan">Agent Models ({props.agents.length})</text>
+      <text fg={TUI_COLOR.accent}>{titleLine(`Agent Models (${props.agents.length})`, props.bulkEdit?.enabled ? `${props.bulkEdit.selectedAgentNames.size} selected` : 'provider/model')}</text>
       {visibleAgents().map((agent, index) => (
-        <text fg={props.scrollOffset + index === props.selectedIndex ? 'cyan' : 'white'}>
+        <text fg={props.scrollOffset + index === props.selectedIndex ? TUI_COLOR.accent : TUI_COLOR.text}>
           {renderAgentRow(agent, props.scrollOffset + index === props.selectedIndex, props.bulkEdit?.enabled ? props.bulkEdit.selectedAgentNames.has(agent.name) : undefined)}
         </text>
       ))}
-      <text fg="gray">{props.bulkEdit?.enabled ? '[Space] Toggle   [a] All   [Enter] Provider   [esc] Cancel' : '[Enter] Configure Model   [Ctrl+E] Bulk Provider   [esc] Back'}</text>
+      <text fg={TUI_COLOR.muted}>{props.bulkEdit?.enabled ? keyHint('[Space] Toggle  [a] All  [Enter] Provider  [esc] Cancel') : keyHint('[Enter] Configure  [Ctrl+E] Bulk Provider  [esc] Back')}</text>
     </box>
   )
 }

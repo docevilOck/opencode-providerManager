@@ -11,5 +11,6 @@ export function renderProviderRow(provider: ManagedProviderSummary, selected: bo
   const cursor = selected ? '>' : ' '
   const mark = provider.isDefault ? '*' : ' '
   const name = truncateField(provider.displayName, PROVIDER_NAME_WIDTH)
-  return `${cursor} ${mark} ${name} ${provider.status} models: ${provider.modelCount} auth: ${provider.authStatus}`
+  const state = `${provider.status}/${provider.authStatus}`
+  return `${cursor} ${mark} ${name.padEnd(PROVIDER_NAME_WIDTH)} models ${String(provider.modelCount).padStart(2)}  ${state}`
 }

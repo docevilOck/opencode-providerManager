@@ -12,8 +12,8 @@ describe('tui rendering', () => {
       defaultModel: 'gpt-5', isDefault: true, authStatus: 'ok', status: 'active', source: 'providers-json', models: [], createdOrder: 0
     }, true)
     expect(row).toContain('> * OpenAI')
-    expect(row).toContain('models: 12')
-    expect(row).toContain('auth: ok')
+    expect(row).toContain('models 12')
+    expect(row).toContain('active/ok')
   })
 
   it('truncates long provider names in provider rows', () => {
@@ -40,22 +40,22 @@ describe('tui rendering', () => {
   it('renders agent row with incomplete status', () => {
     const row = renderAgentRow({ name: 'plan', provider: null, model: null, reasoningEffort: null, status: 'incomplete', source: 'builtin', isBuiltin: true, displayOrder: 0 }, true)
     expect(row).toContain('> plan')
-    expect(row).toContain('model: <not set>')
-    expect(row).toContain('status: incomplete')
+    expect(row).toContain('<not set>')
+    expect(row).toContain('incomplete')
   })
 
   it('renders agent row with provider/model and bulk checkbox', () => {
     const row = renderAgentRow({ name: 'plan', provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high', status: 'override', source: 'global', isBuiltin: true, displayOrder: 0 }, true, true)
     expect(row).toContain('> [x] plan')
-    expect(row).toContain('model: OpenAI/gpt-5')
-    expect(row).toContain('effort: high')
+    expect(row).toContain('OpenAI/gpt-5')
+    expect(row).toContain('high')
   })
 
   it('renders active page and sidebar cursor separately', () => {
     const sidebar = renderSidebar(['provider', 'agents'], 'provider', 'agents')
     expect(sidebar.some((line) => line.includes('* provider'))).toBe(true)
-    expect(sidebar).toContain('>  agents')
-    expect(renderSidebar(['provider', 'agents'], 'provider', 'agents', false)).toEqual(['   provider', '>  agents'])
+    expect(sidebar).toContain('>   agents')
+    expect(renderSidebar(['provider', 'agents'], 'provider', 'agents', false)).toEqual(['    provider', '>   agents'])
   })
 
   it('renders provider validation errors directly below their fields', () => {
@@ -93,6 +93,7 @@ describe('tui rendering', () => {
       validationErrors: [],
       protocolChanged: false
     }
+    expect(renderProviderEditScreen(draft, 'name')).toContain('Edit Provider  /  new')
     expect(renderProviderEditScreen(draft, 'name')).toContain('> Name          : OpenAI')
     expect(renderProviderEditScreen(draft, 'name', { field: 'name', value: 'OpenAI2' })).toContain('>> Name          : [OpenAI2|]')
   })

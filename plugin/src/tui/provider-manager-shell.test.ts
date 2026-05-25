@@ -13,9 +13,9 @@ describe('renderProviderManagerShell', () => {
       providers: [],
       agents: []
     })
-    expect(output).toContain('>  provider')
+    expect(output).toContain('>   provider')
     expect(output).not.toContain('* provider')
-    expect(output).toContain('Providers (0) Default: -')
+    expect(output).toContain('Providers (0)  /  default -')
     expect(output).toContain('No providers configured')
     expect(output).toContain('[Enter] Edit (disabled)')
     expect(output).toContain('[d] Delete (disabled)')
@@ -43,8 +43,8 @@ describe('renderProviderManagerShell', () => {
       }],
       agents: [{ name: 'reviewer', provider: null, model: null, reasoningEffort: null, status: 'incomplete', source: 'builtin', isBuiltin: true, displayOrder: 0 }]
     })
-    expect(output).toContain('Providers (1) Default: OpenAI')
-    expect(output).toContain('>  agents')
+    expect(output).toContain('Providers (1)  /  default OpenAI')
+    expect(output).toContain('>   agents')
     expect(output).not.toContain('* provider')
     expect(output).not.toContain('Agent Models (1)')
   })
@@ -56,7 +56,7 @@ describe('renderProviderManagerShell', () => {
       agents: [],
       error: 'invalid config'
     })
-    expect(output).toContain('>  provider')
+    expect(output).toContain('>   provider')
     expect(output).toContain('Error: invalid config')
   })
 

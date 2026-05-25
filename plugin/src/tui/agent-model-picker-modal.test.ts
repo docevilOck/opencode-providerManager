@@ -36,7 +36,7 @@ describe('agent model picker modal', () => {
     expect(empty.candidateItems).toEqual([])
     expect(renderAgentModelPickerModal(empty)).toContain('No matches found.')
     expect(renderAgentModelPickerModal(providerStep)).toContain('>> OpenAI')
-    expect(renderAgentModelPickerModal(providerStep)).toContain('[Up/Down] Move   [Enter] Select   [esc] Back')
+    expect(renderAgentModelPickerModal(providerStep)).toContain('[Up/Down] Move [Enter] Select [esc] Back')
   })
 
   it('esc returns to the previous step before cancelling the modal', () => {

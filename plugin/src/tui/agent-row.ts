@@ -10,5 +10,5 @@ export function renderAgentRow(agent: AgentModelSummary, selected: boolean, bulk
   const checkbox = typeof bulkSelected === 'boolean' ? ` [${bulkSelected ? 'x' : ' '}]` : ''
   const model = agentModelLabel(agent)
   const effort = agent.reasoningEffort ?? '-'
-  return `${cursor}${checkbox} ${agent.name} model: ${model} effort: ${effort} status: ${agent.status}`
+  return `${cursor}${checkbox} ${agent.name.padEnd(18)} ${model.padEnd(34)} effort ${effort.padEnd(7)} ${agent.status}`
 }
