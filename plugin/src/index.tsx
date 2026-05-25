@@ -320,14 +320,15 @@ function ProviderManagerRoute(props: { data: () => ProviderManagerData | null; p
     <box width="100%" height="100%" flexDirection="column" paddingTop={1} paddingLeft={2} paddingRight={2}>
       <text fg={TUI_COLOR.title}>Provider Manager  /  opencode</text>
       <box flexDirection="row" paddingTop={1} flexGrow={1}>
-        <box width={22} flexDirection="column" paddingRight={2}>
+        <box width={24} flexDirection="column" paddingRight={1} borderStyle="single">
+          <text fg={TUI_COLOR.title}>Navigation</text>
           {sidebarRows().map((row) => (
             <text fg={row.cursor ? TUI_COLOR.accent : row.active ? TUI_COLOR.success : TUI_COLOR.muted}>
               {row.cursor ? '>' : ' '} {row.active ? '*' : ' '} {row.page}
             </text>
           ))}
         </box>
-        <box flexGrow={1} flexDirection="column">
+        <box flexGrow={1} flexDirection="column" paddingLeft={1} paddingRight={1} borderStyle="single">
           {data()?.error ? <text fg={TUI_COLOR.danger}>{titleLine('Error', data()?.error)}</text> : props.providerDraft()
             ? <ProviderEditPage draft={props.providerDraft()!} selectedField={props.providerEditField()} inlineEdit={props.providerInlineEdit()} onInput={props.onProviderInput} onSubmit={props.onProviderSubmit} />
             : shell()?.activePage === 'agents'
@@ -335,7 +336,9 @@ function ProviderManagerRoute(props: { data: () => ProviderManagerData | null; p
             : <ProviderList providers={data()?.providers ?? []} selectedIndex={selectedProvider()} scrollOffset={providerScrollOffset()} runtimeStatuses={props.providerRuntimeStatuses()} />}
         </box>
       </box>
-      <text fg={TUI_COLOR.muted}>{statusLine(shell())}</text>
+      <box flexDirection="row" borderStyle="single" paddingLeft={1}>
+        <text fg={TUI_COLOR.muted}>{statusLine(shell())}</text>
+      </box>
       <ModalView shell={shell} draft={props.providerDraft} fetchModelCandidates={props.fetchModelCandidates} modelDefaultsDraft={props.modelDefaultsDraft} onModelInput={props.onModelInput} onModelSubmit={props.onModelSubmit} />
     </box>
   )
@@ -348,7 +351,7 @@ function ModalView(props: { shell: () => PageShellState | undefined; draft: () =
   }
   const lines = () => renderProviderManagerModalLines(props.shell()?.modalState ?? null, props.fetchModelCandidates(), props.modelDefaultsDraft())
   return (
-    <box flexDirection="column" borderStyle={lines().length ? 'single' : undefined}>
+    <box flexDirection="column" borderStyle={lines().length ? 'single' : undefined} paddingLeft={lines().length ? 1 : 0} paddingRight={lines().length ? 1 : 0}>
       {lines().map((line, index) => <text fg={index === 0 ? TUI_COLOR.accent : line.startsWith('>') ? TUI_COLOR.accent : TUI_COLOR.text}>{line}</text>)}
     </box>
   )
@@ -357,7 +360,7 @@ function ModalView(props: { shell: () => PageShellState | undefined; draft: () =
 function ModelListModal(props: { modal: Extract<NonNullable<PageShellState['modalState']>, { kind: 'model-list' }>; models: ProviderModelConfig[]; onInput: (value: string) => void; onSubmit: () => void }) {
   const rows = () => props.models.length ? props.models : []
   return (
-    <box flexDirection="column" borderStyle="single">
+    <box flexDirection="column" borderStyle="single" paddingLeft={1} paddingRight={1}>
       <text fg={TUI_COLOR.accent}>{titleLine(`Models (${props.models.length})`, 'provider')}</text>
       {props.modal.editing?.mode === 'add' ? (
         <box flexDirection="row">
