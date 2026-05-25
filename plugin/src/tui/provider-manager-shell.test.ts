@@ -17,8 +17,8 @@ describe('renderProviderManagerShell', () => {
     expect(output).not.toContain('* provider')
     expect(output).toContain('Providers (0)  /  default -')
     expect(output).toContain('No providers configured')
-    expect(output).toContain('[Enter] Edit (disabled)')
-    expect(output).toContain('[d] Delete (disabled)')
+    expect(output).toContain('[Enter] Edit disabled')
+    expect(output).toContain('[d] Delete disabled')
   })
 
   it('renders active page headers from the active page, not the sidebar cursor', () => {
@@ -57,7 +57,7 @@ describe('renderProviderManagerShell', () => {
       error: 'invalid config'
     })
     expect(output).toContain('>   provider')
-    expect(output).toContain('Error: invalid config')
+    expect(output).toContain('Error  /  invalid config')
   })
 
   it('omits expired transient status lines from text rendering', () => {

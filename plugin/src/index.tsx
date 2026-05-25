@@ -12,7 +12,7 @@ import { backspaceAgentModelSearch, confirmAgentModelStep, createAgentModelDraft
 import { renderAgentRow } from './tui/agent-row.js'
 import { renderProviderEditScreen } from './tui/provider-edit-screen.js'
 import { renderProviderRow } from './tui/provider-row.js'
-import { keyHint, titleLine } from './tui/theme.js'
+import { keyHint, titleLine, TUI_THEME } from './tui/theme.js'
 import type { AgentModelDraft, AgentModelSummary, ModelOptionSet } from './types/agent.js'
 import type { ManagedProviderSummary, ProviderApiType, ProviderEditDraft, ProviderEditField, ProviderModelConfig, ProviderModelConfigDefaults } from './types/provider.js'
 import type { PageId, PageShellState } from './types/tui.js'
@@ -97,16 +97,7 @@ const MODEL_DEFAULT_FIELDS = ['contextWindow', 'maxOutput', 'inputTypes', 'minim
 const AGENT_SEARCH_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:/ '.split('')
 const CONTENT_WINDOW_SIZE = 8
 const execFileAsync = promisify(execFile)
-const TUI_COLOR = {
-  title: 'blue',
-  accent: 'cyan',
-  text: 'white',
-  muted: 'gray',
-  disabled: 'darkgray',
-  success: 'green',
-  warning: 'yellow',
-  danger: 'red'
-} as const
+const TUI_COLOR = TUI_THEME
 
 function agentSearchCommandName(index: number): string {
   return `provider-manager.agent-modal.input.${index}`
@@ -337,7 +328,7 @@ function ProviderManagerRoute(props: { data: () => ProviderManagerData | null; p
           ))}
         </box>
         <box flexGrow={1} flexDirection="column">
-          {data()?.error ? <text fg="red">Error: {data()?.error}</text> : props.providerDraft()
+          {data()?.error ? <text fg={TUI_COLOR.danger}>{titleLine('Error', data()?.error)}</text> : props.providerDraft()
             ? <ProviderEditPage draft={props.providerDraft()!} selectedField={props.providerEditField()} inlineEdit={props.providerInlineEdit()} onInput={props.onProviderInput} onSubmit={props.onProviderSubmit} />
             : shell()?.activePage === 'agents'
             ? <AgentList agents={data()?.agents ?? []} selectedIndex={selectedAgent()} scrollOffset={agentScrollOffset()} bulkEdit={shell()?.agentBulkEdit} />
@@ -522,10 +513,10 @@ function statusLine(shell: PageShellState | undefined): string {
   if (!shell) return 'Loading...'
   const currentStatusLine = visibleStatusLine(shell.statusLine)
   if (currentStatusLine?.message) return currentStatusLine.message
-  if (shell.focusRegion === 'sidebar') return 'Sidebar: ↑/↓ move, Enter switch, Esc close'
-  if (shell.activePage === 'provider') return 'Provider: ↑/↓ select, a add, r refresh, Esc sidebar'
-  if (shell.agentBulkEdit?.enabled) return 'Agents: ↑/↓ select, Space toggle, a all, Enter provider, Esc cancel'
-  return 'Agents: ↑/↓ select, Enter configure model, Ctrl+E bulk provider, r refresh, Esc sidebar'
+  if (shell.focusRegion === 'sidebar') return keyHint('Sidebar: [Up/Down] Move  [Enter] Switch  [esc] Close')
+  if (shell.activePage === 'provider') return keyHint('Provider: [Up/Down] Select  [a] Add  [r] Refresh  [esc] Sidebar')
+  if (shell.agentBulkEdit?.enabled) return keyHint('Agents: [Up/Down] Select  [Space] Toggle  [a] All  [Enter] Provider  [esc] Cancel')
+  return keyHint('Agents: [Up/Down] Select  [Enter] Configure  [Ctrl+E] Bulk Provider  [r] Refresh  [esc] Sidebar')
 }
 
 async function tui(api: ProviderManagerTuiApi) {

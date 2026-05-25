@@ -9,10 +9,6 @@ export const TUI_THEME = {
   danger: 'red'
 } as const
 
-export function panelTitle(title: string): string {
-  return `-- ${title}`
-}
-
 export function keyHint(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
