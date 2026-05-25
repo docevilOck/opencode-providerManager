@@ -3,10 +3,11 @@ import { promisify } from 'node:util'
 import { createSignal } from 'solid-js'
 import { buildModelOptionSet } from './core/agent-model-option-service.js'
 import { applyFetchedModelSelection, moveFetchModelSelection, selectAllFetchedModels, toggleFetchModelSelection } from './core/fetch-model-modal-service.js'
+import { availableProvidersForAgents } from './core/agent-provider-switch-service.js'
 import { activateSidebarPage, createTransientStatusLine, moveSidebarCursor, returnToSidebar, visibleScrollOffset, visibleStatusLine } from './core/page-state-service.js'
 import { deleteProvider, loadProviderManagerData, ProviderDraftValidationError, setDefaultProvider, type ProviderManagerData } from './core/provider-manager-service.js'
 import { fetchProviderModels as fetchProviderModelsFromRemote, testProviderConnection } from './core/provider-runtime-service.js'
-import { handleAgentModelConfirmAction, handleProviderSaveAction, renderProviderManagerShell } from './tui/provider-manager-shell.js'
+import { handleAgentModelConfirmAction, handleAgentProviderSwitchAction, handleProviderSaveAction, renderProviderManagerShell } from './tui/provider-manager-shell.js'
 import { backspaceAgentModelSearch, confirmAgentModelStep, createAgentModelDraft, escapeAgentModelStep, inputAgentModelSearch, moveAgentModelSelection, renderAgentModelPickerModal } from './tui/agent-model-picker-modal.js'
 import { renderAgentRow } from './tui/agent-row.js'
 import { renderProviderEditScreen } from './tui/provider-edit-screen.js'
@@ -328,7 +329,7 @@ function ProviderManagerRoute(props: { data: () => ProviderManagerData | null; p
           {data()?.error ? <text fg="red">Error: {data()?.error}</text> : props.providerDraft()
             ? <ProviderEditPage draft={props.providerDraft()!} selectedField={props.providerEditField()} inlineEdit={props.providerInlineEdit()} onInput={props.onProviderInput} onSubmit={props.onProviderSubmit} />
             : shell()?.activePage === 'agents'
-            ? <AgentList agents={data()?.agents ?? []} selectedIndex={selectedAgent()} scrollOffset={agentScrollOffset()} />
+            ? <AgentList agents={data()?.agents ?? []} selectedIndex={selectedAgent()} scrollOffset={agentScrollOffset()} bulkEdit={shell()?.agentBulkEdit} />
             : <ProviderList providers={data()?.providers ?? []} selectedIndex={selectedProvider()} scrollOffset={providerScrollOffset()} runtimeStatuses={props.providerRuntimeStatuses()} />}
         </box>
       </box>
@@ -379,6 +380,13 @@ function ModelListModal(props: { modal: Extract<NonNullable<PageShellState['moda
 export function renderProviderManagerModalLines(modal: PageShellState['modalState'], fetchModelCandidates: ProviderModelConfig[], modelDefaultsDraft: ProviderModelConfigDefaults | null = null): string[] {
   if (!modal) return []
   if (modal.kind === 'agent-model-picker') return renderAgentModelPickerModal(modal.draft)
+  if (modal.kind === 'agent-provider-switch') return [
+    `Switch Provider (${modal.agentNames.length} agents)`,
+    ...(modal.providerNames.length
+      ? modal.providerNames.map((name, index) => `${index === modal.selectedIndex ? '>' : ' '} ${name}`)
+      : [modal.message ?? 'No provider can cover selected agent models.']),
+    '[Up/Down] Move   [Enter] Select   [esc] Close'
+  ]
   if (modal.kind === 'provider-test') return ['Provider Test', modal.phase === 'testing' ? 'Testing...' : `Result: ${modal.phase}`, '[Enter] OK / [esc] Close']
   if (modal.kind === 'provider-delete-confirm') return [
     `Delete Provider: ${modal.providerName}`,
@@ -483,7 +491,7 @@ function ProviderActionBar(props: { hasProvider: boolean }) {
   )
 }
 
-function AgentList(props: { agents: AgentModelSummary[]; selectedIndex: number; scrollOffset: number }) {
+function AgentList(props: { agents: AgentModelSummary[]; selectedIndex: number; scrollOffset: number; bulkEdit?: PageShellState['agentBulkEdit'] }) {
   if (props.agents.length < 1) return <text fg="yellow">No agents available.</text>
   const visibleAgents = () => props.agents.slice(props.scrollOffset, props.scrollOffset + CONTENT_WINDOW_SIZE)
   return (
@@ -491,10 +499,10 @@ function AgentList(props: { agents: AgentModelSummary[]; selectedIndex: number; 
       <text fg="cyan">Agent Models ({props.agents.length})</text>
       {visibleAgents().map((agent, index) => (
         <text fg={props.scrollOffset + index === props.selectedIndex ? 'cyan' : 'white'}>
-          {renderAgentRow(agent, props.scrollOffset + index === props.selectedIndex)}
+          {renderAgentRow(agent, props.scrollOffset + index === props.selectedIndex, props.bulkEdit?.enabled ? props.bulkEdit.selectedAgentNames.has(agent.name) : undefined)}
         </text>
       ))}
-      <text fg="gray">[Enter] Configure Model   [esc] Back</text>
+      <text fg="gray">{props.bulkEdit?.enabled ? '[Space] Toggle   [a] All   [Enter] Provider   [esc] Cancel' : '[Enter] Configure Model   [Ctrl+E] Bulk Provider   [esc] Back'}</text>
     </box>
   )
 }
@@ -505,7 +513,8 @@ function statusLine(shell: PageShellState | undefined): string {
   if (currentStatusLine?.message) return currentStatusLine.message
   if (shell.focusRegion === 'sidebar') return 'Sidebar: ↑/↓ move, Enter switch, Esc close'
   if (shell.activePage === 'provider') return 'Provider: ↑/↓ select, a add, r refresh, Esc sidebar'
-  return 'Agents: ↑/↓ select, Enter configure model, r refresh, Esc sidebar'
+  if (shell.agentBulkEdit?.enabled) return 'Agents: ↑/↓ select, Space toggle, a all, Enter provider, Esc cancel'
+  return 'Agents: ↑/↓ select, Enter configure model, Ctrl+E bulk provider, r refresh, Esc sidebar'
 }
 
 async function tui(api: ProviderManagerTuiApi) {
@@ -1046,6 +1055,83 @@ async function tui(api: ProviderManagerTuiApi) {
     lockModal({ kind: 'agent-model-picker', draft: createAgentModelDraft(agent.name, options) })
   }
 
+  function startAgentBulkProviderSwitch() {
+    const currentData = data()
+    if (!currentData || currentData.shell.activePage !== 'agents' || currentData.agents.length < 1) return
+    const agent = currentData.agents[currentData.shell.pageStates.agents.selectedIndex]
+    const selectedAgentNames = new Set(agent ? [agent.name] : [])
+    setShell({
+      ...currentData.shell,
+      agentBulkEdit: { enabled: true, selectedAgentNames },
+      statusLine: null
+    })
+  }
+
+  function toggleCurrentAgentSelection() {
+    const currentData = data()
+    const bulkEdit = currentData?.shell.agentBulkEdit
+    if (!currentData || !bulkEdit?.enabled) return
+    const agent = currentData.agents[currentData.shell.pageStates.agents.selectedIndex]
+    if (!agent) return
+    const selectedAgentNames = new Set(bulkEdit.selectedAgentNames)
+    if (selectedAgentNames.has(agent.name)) selectedAgentNames.delete(agent.name)
+    else selectedAgentNames.add(agent.name)
+    setShell({ ...currentData.shell, agentBulkEdit: { enabled: true, selectedAgentNames } })
+  }
+
+  function selectAllAgentsForBulkSwitch() {
+    const currentData = data()
+    const bulkEdit = currentData?.shell.agentBulkEdit
+    if (!currentData || !bulkEdit?.enabled) return
+    setShell({ ...currentData.shell, agentBulkEdit: { enabled: true, selectedAgentNames: new Set(currentData.agents.map((agent) => agent.name)) } })
+  }
+
+  function cancelAgentBulkProviderSwitch() {
+    const currentData = data()
+    if (!currentData) return
+    setShell({ ...currentData.shell, agentBulkEdit: { enabled: false, selectedAgentNames: new Set() } })
+  }
+
+  function openAgentProviderSwitchModal() {
+    const currentData = data()
+    const bulkEdit = currentData?.shell.agentBulkEdit
+    if (!currentData || !bulkEdit?.enabled) return
+    if (bulkEdit.selectedAgentNames.size < 1) {
+      setShell(statusShell(currentData.shell, 'Select at least one agent', 'warn'))
+      return
+    }
+    const providerNames = availableProvidersForAgents(currentData.agents, currentData.providers, bulkEdit.selectedAgentNames)
+    const agentNames = [...bulkEdit.selectedAgentNames]
+    setData(replaceShell(currentData, openShellModal(currentData.shell, {
+      kind: 'agent-provider-switch',
+      selectedIndex: 0,
+      providerNames,
+      agentNames,
+      message: providerNames.length ? undefined : 'No provider can cover selected agent models.'
+    })))
+  }
+
+  function moveAgentProviderSwitchSelection(delta: -1 | 1) {
+    const currentData = data()
+    const modal = currentData?.shell.modalState
+    if (!currentData || modal?.kind !== 'agent-provider-switch' || modal.providerNames.length < 1) return
+    const selectedIndex = Math.max(0, Math.min(modal.providerNames.length - 1, modal.selectedIndex + delta))
+    setData(replaceShell(currentData, openShellModal(currentData.shell, { ...modal, selectedIndex })))
+  }
+
+  async function confirmAgentProviderSwitch() {
+    const currentData = data()
+    const modal = currentData?.shell.modalState
+    if (!currentData || modal?.kind !== 'agent-provider-switch') return
+    const providerName = modal.providerNames[modal.selectedIndex]
+    if (!providerName) {
+      setData(replaceShell(currentData, closeShellModal(currentData.shell)))
+      return
+    }
+    const next = await handleAgentProviderSwitchAction(root, currentData, new Set(modal.agentNames), providerName, builtinAgents)
+    setData(replaceShell(next, closeShellModal(next.shell)))
+  }
+
   function currentAgentDraft(): AgentModelDraft | null {
     const modal = data()?.shell.modalState
     return modal?.kind === 'agent-model-picker' ? modal.draft : null
@@ -1117,16 +1203,22 @@ async function tui(api: ProviderManagerTuiApi) {
         if (providerDraft()) return void editCurrentProviderField()
         if (currentData.shell.focusRegion === 'sidebar') updateShell((shell) => activateSidebarPage(shell))
         else if (currentData.shell.activePage === 'provider') startEditProvider()
+        else if (currentData.shell.activePage === 'agents' && currentData.shell.agentBulkEdit?.enabled) openAgentProviderSwitchModal()
         else if (currentData.shell.activePage === 'agents') void configureSelectedAgent()
       } },
       { name: 'provider-manager.escape', title: 'Back to sidebar', category: 'Provider', run: () => {
         if (providerDraft()) return void leaveProviderDraft()
         const currentData = data()
         if (!currentData) return
+        if (currentData.shell.agentBulkEdit?.enabled) return cancelAgentBulkProviderSwitch()
         if (currentData.shell.focusRegion === 'sidebar') api.route?.navigate('home')
         else updateShell((shell) => returnToSidebar(shell))
       } },
-      { name: 'provider-manager.add', title: 'Add provider', desc: 'Add a provider to providers.json/auth.json', category: 'Provider', run: () => startAddProvider() },
+      { name: 'provider-manager.add', title: 'Add provider', desc: 'Add a provider to providers.json/auth.json', category: 'Provider', run: () => {
+        const currentData = data()
+        if (currentData?.shell.activePage === 'agents' && currentData.shell.agentBulkEdit?.enabled) return selectAllAgentsForBulkSwitch()
+        startAddProvider()
+      } },
       { name: 'provider-manager.edit-name', title: 'Edit provider name', category: 'Provider', run: () => editProviderTextField('name') },
       { name: 'provider-manager.edit-url', title: 'Edit provider base URL', category: 'Provider', run: () => editProviderTextField('baseUrl') },
       { name: 'provider-manager.edit-key', title: 'Edit provider API key', category: 'Provider', run: () => editProviderTextField('apiKey') },
@@ -1134,6 +1226,10 @@ async function tui(api: ProviderManagerTuiApi) {
       { name: 'provider-manager.fetch-models', title: 'Fetch provider models', category: 'Provider', run: () => fetchProviderModels() },
       { name: 'provider-manager.model-defaults', title: 'Edit model defaults', category: 'Provider', run: () => editModelDefaults() },
       { name: 'provider-manager.save', title: 'Save provider draft', category: 'Provider', run: () => saveProviderDraftFromPage() },
+      { name: 'provider-manager.agent-bulk.start', title: 'Start bulk provider switch', category: 'Provider', run: () => startAgentBulkProviderSwitch() },
+      { name: 'provider-manager.agent-bulk.toggle', title: 'Toggle selected agent', category: 'Provider', run: () => toggleCurrentAgentSelection() },
+      { name: 'provider-manager.agent-bulk.all', title: 'Select all agents', category: 'Provider', run: () => selectAllAgentsForBulkSwitch() },
+      { name: 'provider-manager.agent-bulk.confirm', title: 'Choose provider for selected agents', category: 'Provider', run: () => openAgentProviderSwitchModal() },
       { name: 'provider-manager.delete', title: 'Delete provider', category: 'Provider', run: () => deleteSelectedProvider() },
       { name: 'provider-manager.test', title: 'Test provider', category: 'Provider', run: () => testSelectedProvider() },
       { name: 'provider-manager.default', title: 'Set default provider', category: 'Provider', run: () => setSelectedProviderDefault() },
@@ -1152,6 +1248,8 @@ async function tui(api: ProviderManagerTuiApi) {
       { key: 'p', cmd: 'provider-manager.protocol', desc: 'Select protocol' },
       { key: 'f', cmd: 'provider-manager.fetch-models', desc: 'Fetch models' },
       { key: 'e', cmd: 'provider-manager.model-defaults', desc: 'Edit model defaults' },
+      { key: 'ctrl+e', cmd: 'provider-manager.agent-bulk.start', desc: 'Bulk switch agent provider' },
+      { key: 'space', cmd: 'provider-manager.agent-bulk.toggle', desc: 'Toggle agent' },
       { key: 'ctrl+s', cmd: 'provider-manager.save', desc: 'Save provider' },
       { key: 'd', cmd: 'provider-manager.delete', desc: 'Delete provider' },
       { key: 't', cmd: 'provider-manager.test', desc: 'Test provider' },
@@ -1218,11 +1316,13 @@ async function tui(api: ProviderManagerTuiApi) {
     },
     commands: [
       { name: 'provider-manager.modal.up', title: 'Move modal selection up', category: 'Provider', run: () => {
+        if (data()?.shell.modalState?.kind === 'agent-provider-switch') return moveAgentProviderSwitchSelection(-1)
         if (data()?.shell.modalState?.kind === 'model-list') return moveModelListSelection(-1)
         if (data()?.shell.modalState?.kind === 'model-config-defaults') return moveModelDefaultsField(-1)
         updateFetchModelsModal((modal, models) => moveFetchModelSelection(modal, models.length, -1))
       } },
       { name: 'provider-manager.modal.down', title: 'Move modal selection down', category: 'Provider', run: () => {
+        if (data()?.shell.modalState?.kind === 'agent-provider-switch') return moveAgentProviderSwitchSelection(1)
         if (data()?.shell.modalState?.kind === 'model-list') return moveModelListSelection(1)
         if (data()?.shell.modalState?.kind === 'model-config-defaults') return moveModelDefaultsField(1)
         updateFetchModelsModal((modal, models) => moveFetchModelSelection(modal, models.length, 1))
@@ -1237,6 +1337,7 @@ async function tui(api: ProviderManagerTuiApi) {
         updateFetchModelsModal((modal, models) => selectAllFetchedModels(modal, models))
       } },
       { name: 'provider-manager.modal.edit', title: 'Edit modal field', category: 'Provider', run: () => {
+        if (data()?.shell.modalState?.kind === 'agent-provider-switch') return void confirmAgentProviderSwitch()
         if (data()?.shell.modalState?.kind === 'model-list') return startEditModel()
         if (data()?.shell.modalState?.kind === 'model-config-defaults') return void editSelectedModelDefaultField()
         confirmFetchModelsModal()

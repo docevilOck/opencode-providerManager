@@ -86,6 +86,10 @@ describe('provider command session', () => {
       'provider-manager.delete',
       'provider-manager.test',
       'provider-manager.default',
+      'provider-manager.agent-bulk.start',
+      'provider-manager.agent-bulk.toggle',
+      'provider-manager.agent-bulk.all',
+      'provider-manager.agent-bulk.confirm',
       'provider-manager.save'
     ]))
   })
@@ -145,7 +149,7 @@ describe('provider command session', () => {
     })
     expect(JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8')).agent.reviewer).toEqual({ model: 'OpenAI/gpt-5', reasoningEffort: 'high' })
     expect(agentOutput).toContain('reviewer')
-    expect(agentOutput).toContain('model: gpt-5')
+    expect(agentOutput).toContain('model: OpenAI/gpt-5')
     expect(agentOutput).toContain('status: override')
   })
 
@@ -205,5 +209,28 @@ describe('provider command session', () => {
     }, [])
     expect(output).toContain('Failed to fetch models')
     expect(output).toContain('401 Unauthorized')
+  })
+
+  it('renders agent provider switch modal with available providers', () => {
+    const output = renderProviderManagerModalLines({
+      kind: 'agent-provider-switch',
+      selectedIndex: 1,
+      providerNames: ['A', 'B'],
+      agentNames: ['reviewer', 'planner']
+    }, [])
+    expect(output).toContain('Switch Provider (2 agents)')
+    expect(output).toContain('  A')
+    expect(output).toContain('> B')
+  })
+
+  it('renders agent provider switch modal with no available provider message', () => {
+    const output = renderProviderManagerModalLines({
+      kind: 'agent-provider-switch',
+      selectedIndex: 0,
+      providerNames: [],
+      agentNames: ['reviewer'],
+      message: 'No provider can cover selected agent models.'
+    }, [])
+    expect(output).toContain('No provider can cover selected agent models.')
   })
 })

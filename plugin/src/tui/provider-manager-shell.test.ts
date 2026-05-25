@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { handleAgentModelConfirmAction, handleProviderSaveAction, renderProviderManagerShell } from './provider-manager-shell.js'
+import { handleAgentModelConfirmAction, handleAgentProviderSwitchAction, handleProviderSaveAction, renderProviderManagerShell } from './provider-manager-shell.js'
 import { createInitialPageShellState } from '../core/page-state-service.js'
 import { loadProviderManagerData } from '../core/provider-manager-service.js'
 
@@ -142,5 +142,24 @@ describe('renderProviderManagerShell', () => {
     expect(next.shell.focusRegion).toBe('content')
     expect(next.shell.modalState).toBeNull()
     expect(next.shell.pageStates.agents.selectedIndex).toBe(0)
+  })
+
+  it('connects agent provider switch action to multiple agent configs', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.jsonc'), JSON.stringify({
+      agent: {
+        reviewer: { model: 'OpenAI/gpt-5.4', reasoningEffort: 'high' },
+        planner: { model: 'OpenAI/gpt-5.4-mini' }
+      }
+    }))
+    const view = await loadProviderManagerData(root, [{ name: 'reviewer' }, { name: 'planner' }])
+    const next = await handleAgentProviderSwitchAction(root, view, new Set(['reviewer', 'planner']), 'Ray')
+
+    const jsonc = JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8'))
+    expect(jsonc.agent.reviewer).toEqual({ model: 'Ray/gpt-5.4', reasoningEffort: 'high' })
+    expect(jsonc.agent.planner).toEqual({ model: 'Ray/gpt-5.4-mini' })
+    expect(next.agents.map((agent) => `${agent.provider}/${agent.model}`)).toEqual(['Ray/gpt-5.4', 'Ray/gpt-5.4-mini'])
+    expect(next.shell.agentBulkEdit).toEqual({ enabled: false, selectedAgentNames: new Set() })
+    expect(next.shell.activePage).toBe('agents')
   })
 })

@@ -32,6 +32,12 @@ export type ModalState =
   | { kind: 'model-list'; selectedIndex: number; selectedModelIds: Set<string>; editing?: { mode: 'add' | 'edit'; value: string } }
   | { kind: 'model-config-defaults'; selectedField: string }
   | { kind: 'agent-model-picker'; draft: AgentModelDraft }
+  | { kind: 'agent-provider-switch'; selectedIndex: number; providerNames: string[]; agentNames: string[]; message?: string }
+
+export type AgentBulkEditState = {
+  enabled: boolean
+  selectedAgentNames: Set<string>
+}
 
 export type PageShellState = {
   pages: PageId[]
@@ -40,5 +46,6 @@ export type PageShellState = {
   focusRegion: 'sidebar' | 'content' | 'modal'
   pageStates: Record<PageId, PageContentState>
   modalState: ModalState | null
+  agentBulkEdit?: AgentBulkEditState
   statusLine: StatusLine | null
 }

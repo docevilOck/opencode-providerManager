@@ -5,6 +5,7 @@ import { renderAgentModelConfigScreen } from './agent-model-config-screen.js'
 import { renderSidebar } from './page-sidebar.js'
 import { renderProviderHomeScreen } from './provider-home-screen.js'
 import { reloadProviderManagerData, saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
+import { buildAgentProviderSwitchConfigs } from '../core/agent-provider-switch-service.js'
 import { visibleStatusLine } from '../core/page-state-service.js'
 import type { AgentModelDraft } from '../types/agent.js'
 import type { ProviderEditDraft } from '../types/provider.js'
@@ -25,7 +26,7 @@ export function renderProviderManagerShell(view: ProviderManagerShellView): stri
   const pageState = view.shell.pageStates[view.shell.activePage]
   const content = view.shell.activePage === 'provider'
     ? renderProviderHomeScreen(view.providers, pageState.selectedIndex, pageState.scrollOffset, LIST_WINDOW_SIZE)
-    : renderAgentModelConfigScreen(view.agents, pageState.selectedIndex, pageState.scrollOffset, LIST_WINDOW_SIZE)
+    : renderAgentModelConfigScreen(view.agents, pageState.selectedIndex, pageState.scrollOffset, LIST_WINDOW_SIZE, view.shell.agentBulkEdit)
   return [...sidebar, ...content, actionBar(view.shell.activePage, view.providers.length > 0), visibleStatusLine(view.shell.statusLine)?.message ?? ''].filter(Boolean).join('\n')
 }
 
@@ -67,5 +68,18 @@ export async function handleAgentModelConfirmAction(root: string, view: Provider
     ...(draft.reasoningEffort ? { reasoningEffort: draft.reasoningEffort } : {})
   })
   const shell = returnToPageContent(view.shell, 'agents')
+  return reloadProviderManagerData(root, builtinAgents, shell)
+}
+
+export async function handleAgentProviderSwitchAction(root: string, view: ProviderManagerData, selectedAgentNames: Set<string>, providerName: string, builtinAgents: unknown[] = view.snapshot.builtinAgents): Promise<ProviderManagerData> {
+  const configs = buildAgentProviderSwitchConfigs(view.agents, selectedAgentNames, providerName)
+  if (configs.length < 1) throw new Error('agent provider switch is incomplete')
+  for (const { agentName, config } of configs) {
+    await saveAgentModelConfig(root, view.snapshot, agentName, config)
+  }
+  const shell = returnToPageContent({
+    ...view.shell,
+    agentBulkEdit: { enabled: false, selectedAgentNames: new Set() }
+  }, 'agents')
   return reloadProviderManagerData(root, builtinAgents, shell)
 }

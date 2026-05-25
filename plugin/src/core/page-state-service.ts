@@ -27,6 +27,7 @@ export function createInitialPageShellState(): PageShellState {
       provider: { selectedIndex: 0, scrollOffset: 0 },
       agents: { selectedIndex: 0, scrollOffset: 0 }
     },
+    agentBulkEdit: { enabled: false, selectedAgentNames: new Set() },
     modalState: null,
     statusLine: null
   }

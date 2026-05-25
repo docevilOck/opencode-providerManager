@@ -44,6 +44,13 @@ describe('tui rendering', () => {
     expect(row).toContain('status: incomplete')
   })
 
+  it('renders agent row with provider/model and bulk checkbox', () => {
+    const row = renderAgentRow({ name: 'plan', provider: 'OpenAI', model: 'gpt-5', reasoningEffort: 'high', status: 'override', source: 'global', isBuiltin: true, displayOrder: 0 }, true, true)
+    expect(row).toContain('> [x] plan')
+    expect(row).toContain('model: OpenAI/gpt-5')
+    expect(row).toContain('effort: high')
+  })
+
   it('renders active page and sidebar cursor separately', () => {
     const sidebar = renderSidebar(['provider', 'agents'], 'provider', 'agents')
     expect(sidebar.some((line) => line.includes('* provider'))).toBe(true)
