@@ -169,6 +169,29 @@ describe('provider command session', () => {
     expect(output).toContain('[Enter] Confirm [esc] Close')
   })
 
+  it('renders fetch models loading and provider test states with themed titles', () => {
+    expect(renderProviderManagerModalLines({
+      kind: 'fetch-models',
+      phase: 'loading',
+      selectedIndex: 0,
+      selectedModelIds: new Set()
+    }, [])).toEqual([
+      'Fetch Models  /  remote',
+      'Fetching models...',
+      '[esc] Cancel'
+    ])
+
+    expect(renderProviderManagerModalLines({
+      kind: 'provider-test',
+      providerName: 'OpenAI',
+      phase: 'testing'
+    }, [])).toEqual([
+      'Provider Test  /  OpenAI',
+      'Testing...',
+      '[Enter] OK [esc] Close'
+    ])
+  })
+
   it('renders model defaults modal with all editable fields and selected reasoning', () => {
     const output = renderProviderManagerModalLines({
       kind: 'model-config-defaults',
@@ -197,6 +220,35 @@ describe('provider command session', () => {
     expect(output).toContain('Delete Provider  /  OpenAI')
     expect(output).toContain('Switch default provider before deleting this provider.')
     expect(output).toContain('[esc] Close')
+  })
+
+  it('renders leave, protocol and model list modal chrome consistently', () => {
+    expect(renderProviderManagerModalLines({
+      kind: 'leave-confirm',
+      target: 'provider-edit'
+    }, [])).toEqual([
+      'Unsaved changes',
+      '[Enter] Confirm',
+      '[esc] Close'
+    ])
+
+    const protocol = renderProviderManagerModalLines({
+      kind: 'protocol-select',
+      selectedIndex: 1
+    }, [])
+    expect(protocol[0]).toBe('Select API Protocol  /  provider')
+    expect(protocol).toContain('> openai-chat')
+    expect(protocol).toContain('[Up/Down] Move [Enter] Select')
+
+    expect(renderProviderManagerModalLines({
+      kind: 'model-list',
+      selectedIndex: 0,
+      selectedModelIds: new Set()
+    }, [])).toEqual([
+      'Models',
+      '[Space] Toggle [Enter] Edit [a] Add [Ctrl+S] Save',
+      '[esc] Close'
+    ])
   })
 
   it('renders fetch models failure with error summary', () => {
