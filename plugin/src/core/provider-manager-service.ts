@@ -1,5 +1,5 @@
 import { readOpencodeConfigSnapshot } from '../infra/opencode-config-reader.js'
-import { writeAuthConfig, writeGlobalAgentConfig, writeProvidersConfig, writeSettingsConfig } from '../infra/opencode-config-writer.js'
+import { deleteGlobalProviderConfig, writeAuthConfig, writeGlobalAgentConfig, writeProvidersConfig, writeSettingsConfig } from '../infra/opencode-config-writer.js'
 import type { AgentModelSummary } from '../types/agent.js'
 import type { ManagedProviderSummary, OpencodeConfigSnapshot, ProviderEditDraft } from '../types/provider.js'
 import type { PageShellState, ValidationIssue } from '../types/tui.js'
@@ -113,7 +113,11 @@ export async function setDefaultProvider(root: string, providerName: string): Pr
 export async function deleteProvider(root: string, providerName: string): Promise<void> {
   const current = await readOpencodeConfigSnapshot(root, [])
   const settings = typeof current.settingsJson === 'object' && current.settingsJson !== null ? current.settingsJson as Record<string, unknown> : {}
-  if (typeof settings.defaultProvider === 'string' && settings.defaultProvider.toLowerCase() === providerName.toLowerCase()) {
+  const globalDefaultProvider = typeof current.globalOpencodeJson === 'object' && current.globalOpencodeJson !== null && typeof (current.globalOpencodeJson as Record<string, unknown>).model === 'string'
+    ? ((current.globalOpencodeJson as Record<string, unknown>).model as string).split('/')[0] ?? null
+    : null
+  const defaultProvider = typeof settings.defaultProvider === 'string' ? settings.defaultProvider : globalDefaultProvider
+  if (typeof defaultProvider === 'string' && defaultProvider.toLowerCase() === providerName.toLowerCase()) {
     throw new Error('provider.delete.defaultProvider')
   }
   const providersJson = typeof current.providersJson === 'object' && current.providersJson !== null ? { ...(current.providersJson as Record<string, unknown>) } : {}
@@ -122,6 +126,7 @@ export async function deleteProvider(root: string, providerName: string): Promis
   delete authJson[providerName]
   await writeProvidersConfig(root, providersJson)
   await writeAuthConfig(root, authJson)
+  await deleteGlobalProviderConfig(root, providerName, current.globalOpencodeSource)
 }
 
 export async function saveAgentModelConfig(root: string, snapshot: OpencodeConfigSnapshot, agentName: string, config: Record<string, unknown>): Promise<void> {

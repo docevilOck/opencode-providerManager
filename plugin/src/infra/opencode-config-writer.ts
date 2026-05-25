@@ -58,3 +58,13 @@ export async function writeGlobalAgentConfig(root: string, agentName: string, co
   agent[agentName] = config
   await writeJson(filePath, { ...current, agent })
 }
+
+export async function deleteGlobalProviderConfig(root: string, providerName: string, preferredSource?: 'json' | 'jsonc' | 'missing'): Promise<void> {
+  if (preferredSource === 'missing') return
+  const filePath = await resolveGlobalConfigWritePath(root, preferredSource)
+  const current = await readJson(filePath)
+  const provider = typeof current.provider === 'object' && current.provider !== null ? { ...(current.provider as Record<string, unknown>) } : null
+  if (!provider || !(providerName in provider)) return
+  delete provider[providerName]
+  await writeJson(filePath, { ...current, provider })
+}

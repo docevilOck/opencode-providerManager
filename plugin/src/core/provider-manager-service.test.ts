@@ -176,4 +176,23 @@ describe('loadProviderManagerData', () => {
     await deleteProvider(root, 'Other')
     expect(JSON.parse(await readFile(join(root, 'providers.json'), 'utf8')).Other).toBeUndefined()
   })
+
+  it('deletes providers from global opencode config', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.json'), JSON.stringify({
+      provider: {
+        OpenAI: { baseUrl: 'https://api.openai.com/v1', apiType: 'openai-responses', models: [] },
+        Other: { baseUrl: 'https://example.com/v1', apiType: 'openai-compatible-chat', models: [] }
+      },
+      model: 'OpenAI/gpt-5'
+    }))
+
+    await expect(deleteProvider(root, 'OpenAI')).rejects.toThrow('provider.delete.defaultProvider')
+    await deleteProvider(root, 'Other')
+
+    const opencode = JSON.parse(await readFile(join(root, 'opencode.json'), 'utf8'))
+    expect(opencode.provider.Other).toBeUndefined()
+    const data = await loadProviderManagerData(root, [])
+    expect(data.providers.map((provider) => provider.name)).toEqual(['OpenAI'])
+  })
 })
