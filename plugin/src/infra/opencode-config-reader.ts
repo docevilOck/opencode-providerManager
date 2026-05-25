@@ -34,7 +34,35 @@ export function parseJsonc(content: string): unknown {
     }
     output += char
   }
-  return JSON.parse(output)
+  return JSON.parse(stripTrailingCommas(output))
+}
+
+function stripTrailingCommas(content: string): string {
+  let output = ''
+  let inString = false
+  let escaped = false
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index]
+    if (inString) {
+      output += char
+      if (escaped) escaped = false
+      else if (char === '\\') escaped = true
+      else if (char === '"') inString = false
+      continue
+    }
+    if (char === '"') {
+      inString = true
+      output += char
+      continue
+    }
+    if (char === ',') {
+      let nextIndex = index + 1
+      while (/\s/.test(content[nextIndex] ?? '')) nextIndex += 1
+      if (content[nextIndex] === '}' || content[nextIndex] === ']') continue
+    }
+    output += char
+  }
+  return output
 }
 
 async function readJsonObject(filePath: string): Promise<unknown> {

@@ -24,6 +24,13 @@ function globalProviders(globalOpencodeJson: unknown): Record<string, unknown> {
   return globalOpencodeJson.provider
 }
 
+function providerApiKey(name: string, provider: RawProvider, auth: Record<string, unknown>): string | null {
+  const authEntry = auth[name]
+  if (isRecord(authEntry) && typeof authEntry.apiKey === 'string' && authEntry.apiKey.length > 0) return authEntry.apiKey
+  if (typeof provider.options?.apiKey === 'string' && provider.options.apiKey.length > 0) return provider.options.apiKey
+  return null
+}
+
 export function normalizeProviders(providersJson: unknown, settingsJson: unknown, authJson: unknown, globalOpencodeJson: unknown = {}): ManagedProviderSummary[] {
   const providers = { ...globalProviders(globalOpencodeJson), ...(isRecord(providersJson) ? providersJson : {}) }
   const settings = isRecord(settingsJson) ? settingsJson : {}
@@ -43,7 +50,7 @@ export function normalizeProviders(providersJson: unknown, settingsJson: unknown
       inputTypes: model.inputTypes ?? ['text', 'image'],
       reasoningEfforts: model.reasoningEfforts ?? ['minimal', 'low', 'medium', 'high', 'xhigh']
     }))
-    const hasAuth = (isRecord(auth[name]) && typeof (auth[name] as Record<string, unknown>).apiKey === 'string') || typeof provider.options?.apiKey === 'string'
+    const apiKey = providerApiKey(name, provider, auth)
     const isDefault = defaultProvider?.toLowerCase() === name.toLowerCase()
     return {
       name,
@@ -53,8 +60,9 @@ export function normalizeProviders(providersJson: unknown, settingsJson: unknown
       apiType: provider.apiType ?? 'openai-compatible-chat',
       modelCount: models.length,
       defaultModel: provider.defaultModel ?? null,
+      apiKey,
       isDefault,
-      authStatus: hasAuth ? 'ok' : 'missing',
+      authStatus: apiKey ? 'ok' : 'missing',
       status: isDefault ? 'active' : 'ready',
       source: isRecord(providersJson) && name in providersJson ? 'providers-json' : 'opencode-json',
       models,

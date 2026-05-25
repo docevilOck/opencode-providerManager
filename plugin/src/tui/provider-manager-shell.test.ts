@@ -13,8 +13,40 @@ describe('renderProviderManagerShell', () => {
       providers: [],
       agents: []
     })
-    expect(output).toContain('>* provider')
+    expect(output).toContain('>  provider')
+    expect(output).not.toContain('* provider')
+    expect(output).toContain('Providers (0) Default: -')
     expect(output).toContain('No providers configured')
+    expect(output).toContain('[Enter] Edit (disabled)')
+    expect(output).toContain('[d] Delete (disabled)')
+  })
+
+  it('renders active page headers from the active page, not the sidebar cursor', () => {
+    const shell = createInitialPageShellState()
+    shell.sidebarCursorPage = 'agents'
+    const output = renderProviderManagerShell({
+      shell,
+      providers: [{
+        name: 'OpenAI',
+        id: 'openai',
+        displayName: 'OpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        apiType: 'openai-responses',
+        modelCount: 1,
+        defaultModel: 'gpt-5',
+        isDefault: true,
+        authStatus: 'ok',
+        status: 'active',
+        source: 'providers-json',
+        models: [],
+        createdOrder: 0
+      }],
+      agents: [{ name: 'reviewer', provider: null, model: null, reasoningEffort: null, status: 'incomplete', source: 'builtin', isBuiltin: true, displayOrder: 0 }]
+    })
+    expect(output).toContain('Providers (1) Default: OpenAI')
+    expect(output).toContain('>  agents')
+    expect(output).not.toContain('* provider')
+    expect(output).not.toContain('Agent Models (1)')
   })
 
   it('renders config loading errors inside shell', () => {
@@ -24,8 +56,19 @@ describe('renderProviderManagerShell', () => {
       agents: [],
       error: 'invalid config'
     })
-    expect(output).toContain('>* provider')
+    expect(output).toContain('>  provider')
     expect(output).toContain('Error: invalid config')
+  })
+
+  it('omits expired transient status lines from text rendering', () => {
+    const shell = createInitialPageShellState()
+    shell.statusLine = { message: 'No provider selected', level: 'warn', expiresAt: 1 }
+    const output = renderProviderManagerShell({
+      shell,
+      providers: [],
+      agents: []
+    })
+    expect(output).not.toContain('No provider selected')
   })
 
   it('connects provider save action to config files', async () => {

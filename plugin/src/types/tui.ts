@@ -17,6 +17,7 @@ export type ValidationIssue = {
 export type StatusLine = {
   message: string
   level: 'info' | 'warn' | 'error'
+  expiresAt?: number
 }
 
 export type FetchModelsPhase = 'loading' | 'success' | 'failure'
@@ -24,9 +25,11 @@ export type ProviderTestPhase = 'testing' | 'cancelled' | 'success' | 'failure'
 
 export type ModalState =
   | { kind: 'provider-test'; providerName: string; phase: ProviderTestPhase }
+  | { kind: 'provider-delete-confirm'; providerName: string; isDefault: boolean }
   | { kind: 'leave-confirm'; target: 'provider-edit' }
   | { kind: 'protocol-select'; selectedIndex: number }
-  | { kind: 'fetch-models'; phase: FetchModelsPhase; selectedIndex: number; selectedModelIds: Set<string> }
+  | { kind: 'fetch-models'; phase: FetchModelsPhase; selectedIndex: number; selectedModelIds: Set<string>; message?: string }
+  | { kind: 'model-list'; selectedIndex: number; selectedModelIds: Set<string>; editing?: { mode: 'add' | 'edit'; value: string } }
   | { kind: 'model-config-defaults'; selectedField: string }
   | { kind: 'agent-model-picker'; draft: AgentModelDraft }
 

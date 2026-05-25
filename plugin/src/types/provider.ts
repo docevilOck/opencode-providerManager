@@ -28,6 +28,7 @@ export type ManagedProviderSummary = {
   apiType: ProviderApiType
   modelCount: number
   defaultModel: string | null
+  apiKey?: string | null
   isDefault: boolean
   authStatus: 'ok' | 'missing' | 'invalid'
   status: 'active' | 'ready' | 'warn' | 'error'
@@ -36,7 +37,7 @@ export type ManagedProviderSummary = {
   createdOrder: number
 }
 
-export type ProviderEditField = 'name' | 'baseUrl' | 'apiType' | 'apiKey' | 'defaultModel'
+export type ProviderEditField = 'name' | 'baseUrl' | 'apiType' | 'apiKey' | 'models' | 'defaultModel'
 
 export type ProviderEditDraft = {
   originalName: string | null

@@ -25,13 +25,13 @@ describe('validateProviderDraft', () => {
     expect(issues.map((issue) => issue.code)).toContain('provider.name.duplicate')
   })
 
-  it('allows empty default model when no models exist', () => {
-    const issues = validateProviderDraft(draft({ models: [], defaultModel: null }), [])
+  it('does not require provider-level default model metadata', () => {
+    const issues = validateProviderDraft(draft({ defaultModel: null }), [])
     expect(issues).toEqual([])
   })
 
-  it('rejects default model outside current model set', () => {
+  it('does not reject stale provider-level default model metadata', () => {
     const issues = validateProviderDraft(draft({ defaultModel: 'missing' }), [])
-    expect(issues.map((issue) => issue.code)).toContain('provider.defaultModel.notFound')
+    expect(issues).toEqual([])
   })
 })

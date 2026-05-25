@@ -28,11 +28,5 @@ export function validateProviderDraft(draft: ProviderEditDraft, otherProviderNam
   if (!SUPPORTED_API_TYPES.includes(draft.apiType)) {
     issues.push(issue('apiType', 'provider.apiType.unsupported', 'API type is not supported'))
   }
-  if (draft.models.length > 0 && !draft.defaultModel) {
-    issues.push(issue('defaultModel', 'provider.defaultModel.missing', 'Default model is required'))
-  }
-  if (draft.defaultModel && !draft.models.some((model) => model.id === draft.defaultModel)) {
-    issues.push(issue('defaultModel', 'provider.defaultModel.notFound', 'Default model must exist in provider models'))
-  }
   return issues
 }

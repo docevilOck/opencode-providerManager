@@ -2,7 +2,7 @@ import { readOpencodeConfigSnapshot } from '../infra/opencode-config-reader.js'
 import { writeAuthConfig, writeGlobalAgentConfig, writeProvidersConfig, writeSettingsConfig } from '../infra/opencode-config-writer.js'
 import type { AgentModelSummary } from '../types/agent.js'
 import type { ManagedProviderSummary, OpencodeConfigSnapshot, ProviderEditDraft } from '../types/provider.js'
-import type { PageShellState } from '../types/tui.js'
+import type { PageShellState, ValidationIssue } from '../types/tui.js'
 import { mergeAgentModelSummaries } from './agent-model-config-service.js'
 import { createInitialPageShellState } from './page-state-service.js'
 import { normalizeProviders } from './provider-normalizer.js'
@@ -14,6 +14,45 @@ export type ProviderManagerData = {
   agents: AgentModelSummary[]
   shell: PageShellState
   error?: string
+}
+
+export class ProviderDraftValidationError extends Error {
+  constructor(public readonly issues: ValidationIssue[]) {
+    super(issues.map((issue) => issue.code).join(','))
+    this.name = 'ProviderDraftValidationError'
+  }
+}
+
+function providerConfigFromDraft(draft: ProviderEditDraft): Record<string, unknown> {
+  return {
+    baseUrl: draft.baseUrl,
+    apiType: draft.apiType,
+    models: draft.models
+  }
+}
+
+function upsertProviderConfig(providersJson: Record<string, unknown>, draft: ProviderEditDraft, defaultProvider?: string): Record<string, unknown> {
+  const next: Record<string, unknown> = {}
+  const providerConfig = providerConfigFromDraft(draft)
+  const originalKey = draft.originalName
+  const isNewProvider = !originalKey
+  let inserted = false
+
+  for (const [name, value] of Object.entries(providersJson)) {
+    if (originalKey && name === originalKey) {
+      next[draft.name] = providerConfig
+      inserted = true
+      continue
+    }
+    next[name] = value
+    if (isNewProvider && defaultProvider && name.toLowerCase() === defaultProvider.toLowerCase()) {
+      next[draft.name] = providerConfig
+      inserted = true
+    }
+  }
+
+  if (!inserted) next[draft.name] = providerConfig
+  return next
 }
 
 export async function loadProviderManagerData(root: string, builtinAgents: unknown[]): Promise<ProviderManagerData> {
@@ -41,28 +80,48 @@ export async function saveProviderDraft(root: string, draft: ProviderEditDraft, 
   const otherNames = existingProviders.filter((provider) => provider.name !== draft.originalName).map((provider) => provider.name)
   const issues = validateProviderDraft(draft, otherNames)
   if (issues.length > 0) {
-    throw new Error(issues.map((issue) => issue.code).join(','))
+    throw new ProviderDraftValidationError(issues)
   }
   const current = await readOpencodeConfigSnapshot(root, [])
   const providersJson = typeof current.providersJson === 'object' && current.providersJson !== null ? { ...(current.providersJson as Record<string, unknown>) } : {}
   const authJson = typeof current.authJson === 'object' && current.authJson !== null ? { ...(current.authJson as Record<string, unknown>) } : {}
   const settingsJson = typeof current.settingsJson === 'object' && current.settingsJson !== null ? { ...(current.settingsJson as Record<string, unknown>) } : {}
+  const existingAuth = draft.originalName && typeof authJson[draft.originalName] === 'object' && authJson[draft.originalName] !== null
+    ? authJson[draft.originalName] as Record<string, unknown>
+    : {}
   if (draft.originalName && draft.originalName !== draft.name) {
-    delete providersJson[draft.originalName]
     delete authJson[draft.originalName]
   }
-  providersJson[draft.name] = {
-    baseUrl: draft.baseUrl,
-    apiType: draft.apiType,
-    models: draft.models,
-    defaultModel: draft.defaultModel
-  }
-  authJson[draft.name] = { apiKey: draft.apiKey }
-  await writeProvidersConfig(root, providersJson)
+  const nextProvidersJson = upsertProviderConfig(providersJson, draft, typeof settingsJson.defaultProvider === 'string' ? settingsJson.defaultProvider : undefined)
+  const shouldWriteApiKey = !draft.originalName || draft.dirtyFields.has('apiKey') || draft.apiKey.length > 0 || typeof existingAuth.apiKey !== 'string'
+  if (shouldWriteApiKey) authJson[draft.name] = { apiKey: draft.apiKey }
+  else authJson[draft.name] = existingAuth
+  await writeProvidersConfig(root, nextProvidersJson)
   await writeAuthConfig(root, authJson)
   await writeSettingsConfig(root, settingsJson)
   const refreshed = await readOpencodeConfigSnapshot(root, [])
    return normalizeProviders(refreshed.providersJson, refreshed.settingsJson, refreshed.authJson, refreshed.globalOpencodeJson)
+}
+
+export async function setDefaultProvider(root: string, providerName: string): Promise<void> {
+  const current = await readOpencodeConfigSnapshot(root, [])
+  const settingsJson = typeof current.settingsJson === 'object' && current.settingsJson !== null ? { ...(current.settingsJson as Record<string, unknown>) } : {}
+  settingsJson.defaultProvider = providerName
+  await writeSettingsConfig(root, settingsJson)
+}
+
+export async function deleteProvider(root: string, providerName: string): Promise<void> {
+  const current = await readOpencodeConfigSnapshot(root, [])
+  const settings = typeof current.settingsJson === 'object' && current.settingsJson !== null ? current.settingsJson as Record<string, unknown> : {}
+  if (typeof settings.defaultProvider === 'string' && settings.defaultProvider.toLowerCase() === providerName.toLowerCase()) {
+    throw new Error('provider.delete.defaultProvider')
+  }
+  const providersJson = typeof current.providersJson === 'object' && current.providersJson !== null ? { ...(current.providersJson as Record<string, unknown>) } : {}
+  const authJson = typeof current.authJson === 'object' && current.authJson !== null ? { ...(current.authJson as Record<string, unknown>) } : {}
+  delete providersJson[providerName]
+  delete authJson[providerName]
+  await writeProvidersConfig(root, providersJson)
+  await writeAuthConfig(root, authJson)
 }
 
 export async function saveAgentModelConfig(root: string, snapshot: OpencodeConfigSnapshot, agentName: string, config: Record<string, unknown>): Promise<void> {

@@ -1,6 +1,21 @@
-import type { PageId, PageShellState } from '../types/tui.js'
+import type { PageId, PageShellState, StatusLine } from '../types/tui.js'
 
 const PAGES: PageId[] = ['provider', 'agents']
+export const STATUS_LINE_TTL_MS = 2000
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+export function createTransientStatusLine(message: string, level: StatusLine['level'], now = Date.now()): StatusLine {
+  return { message, level, expiresAt: now + STATUS_LINE_TTL_MS }
+}
+
+export function visibleStatusLine(statusLine: StatusLine | null | undefined, now = Date.now()): StatusLine | null {
+  if (!statusLine) return null
+  if (statusLine.expiresAt !== undefined && statusLine.expiresAt <= now) return null
+  return statusLine
+}
 
 export function createInitialPageShellState(): PageShellState {
   return {
@@ -19,7 +34,7 @@ export function createInitialPageShellState(): PageShellState {
 
 export function moveSidebarCursor(state: PageShellState, delta: -1 | 1): PageShellState {
   const current = state.pages.indexOf(state.sidebarCursorPage)
-  const nextIndex = Math.max(0, Math.min(state.pages.length - 1, current + delta))
+  const nextIndex = clamp(current + delta, 0, state.pages.length - 1)
   const sidebarCursorPage = state.pages[nextIndex] ?? state.sidebarCursorPage
   return {
     ...state,
@@ -44,4 +59,12 @@ export function returnToSidebar(state: PageShellState): PageShellState {
     sidebarCursorPage: state.activePage,
     statusLine: null
   }
+}
+
+export function visibleScrollOffset(selectedIndex: number, scrollOffset: number, itemCount: number, windowSize: number): number {
+  const maxOffset = Math.max(0, itemCount - windowSize)
+  if (itemCount <= windowSize) return 0
+  if (selectedIndex < scrollOffset) return clamp(selectedIndex, 0, maxOffset)
+  if (selectedIndex >= scrollOffset + windowSize) return clamp(selectedIndex - windowSize + 1, 0, maxOffset)
+  return clamp(scrollOffset, 0, maxOffset)
 }

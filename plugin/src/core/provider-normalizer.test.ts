@@ -15,7 +15,9 @@ describe('normalizeProviders', () => {
     expect(providers.map((item) => item.name)).toEqual(['OpenAI', 'Anthropic'])
     expect(providers[0]?.isDefault).toBe(true)
     expect(providers[0]?.authStatus).toBe('ok')
+    expect(providers[0]?.apiKey).toBe('secret')
     expect(providers[1]?.authStatus).toBe('missing')
+    expect(providers[1]?.apiKey).toBeNull()
   })
 
   it('loads providers from opencode.json provider map', () => {
@@ -40,6 +42,7 @@ describe('normalizeProviders', () => {
       name: 'rayplus',
       baseUrl: 'https://rayplus.site/v1',
       modelCount: 1,
+      apiKey: 'secret',
       authStatus: 'ok',
       isDefault: true,
       source: 'opencode-json'

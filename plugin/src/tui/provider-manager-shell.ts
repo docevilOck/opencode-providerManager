@@ -5,6 +5,7 @@ import { renderAgentModelConfigScreen } from './agent-model-config-screen.js'
 import { renderSidebar } from './page-sidebar.js'
 import { renderProviderHomeScreen } from './provider-home-screen.js'
 import { reloadProviderManagerData, saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
+import { visibleStatusLine } from '../core/page-state-service.js'
 import type { AgentModelDraft } from '../types/agent.js'
 import type { ProviderEditDraft } from '../types/provider.js'
 import type { PageId } from '../types/tui.js'
@@ -16,14 +17,23 @@ export type ProviderManagerShellView = {
   error?: string
 }
 
+const LIST_WINDOW_SIZE = 8
+
 export function renderProviderManagerShell(view: ProviderManagerShellView): string {
-  const sidebar = renderSidebar(view.shell.pages, view.shell.activePage, view.shell.sidebarCursorPage)
+  const sidebar = renderSidebar(view.shell.pages, view.shell.activePage, view.shell.sidebarCursorPage, view.shell.focusRegion !== 'sidebar')
   if (view.error) return [...sidebar, `Error: ${view.error}`].join('\n')
   const pageState = view.shell.pageStates[view.shell.activePage]
   const content = view.shell.activePage === 'provider'
-    ? renderProviderHomeScreen(view.providers, pageState.selectedIndex)
-    : renderAgentModelConfigScreen(view.agents, pageState.selectedIndex)
-  return [...sidebar, ...content, view.shell.statusLine?.message ?? ''].filter(Boolean).join('\n')
+    ? renderProviderHomeScreen(view.providers, pageState.selectedIndex, pageState.scrollOffset, LIST_WINDOW_SIZE)
+    : renderAgentModelConfigScreen(view.agents, pageState.selectedIndex, pageState.scrollOffset, LIST_WINDOW_SIZE)
+  return [...sidebar, ...content, actionBar(view.shell.activePage, view.providers.length > 0), visibleStatusLine(view.shell.statusLine)?.message ?? ''].filter(Boolean).join('\n')
+}
+
+function actionBar(page: PageId, hasProvider: boolean): string {
+  if (page !== 'provider') return '[Enter] Configure Model   [esc] Back'
+  return hasProvider
+    ? '[Enter] Edit   [a] Add   [d] Delete   [t] Test   [s] Set Default   [esc] Back'
+    : '[Enter] Edit (disabled)   [a] Add   [d] Delete (disabled)   [t] Test (disabled)   [s] Set Default (disabled)   [esc] Back'
 }
 
 function returnToPageContent(shell: PageShellState, activePage: PageId): PageShellState {

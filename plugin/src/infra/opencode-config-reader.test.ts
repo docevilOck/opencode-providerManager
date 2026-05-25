@@ -48,4 +48,30 @@ describe('opencode config reader', () => {
     const snapshot = await readOpencodeConfigSnapshot(root, [])
     expect(snapshot.globalOpencodeJson).toEqual({ agent: { reviewer: { prompt: 'a // b /* c */', model: 'gpt-5' } } })
   })
+
+  it('parses jsonc trailing commas outside strings', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.jsonc'), `{
+      "agent": {
+        "reviewer": {
+          "model": "gpt-5",
+          "tools": [
+            "read",
+            "write",
+          ],
+          "prompt": "keep ,] and ,} inside strings",
+        },
+      },
+    }`)
+    const snapshot = await readOpencodeConfigSnapshot(root, [])
+    expect(snapshot.globalOpencodeJson).toEqual({
+      agent: {
+        reviewer: {
+          model: 'gpt-5',
+          tools: ['read', 'write'],
+          prompt: 'keep ,] and ,} inside strings'
+        }
+      }
+    })
+  })
 })
