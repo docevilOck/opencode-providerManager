@@ -44,6 +44,11 @@ describe('loadProviderManagerData', () => {
     expect(providerConfig.defaultModel).toBeUndefined()
     const auth = JSON.parse(await readFile(join(root, 'auth.json'), 'utf8'))
     expect(auth.OpenAI).toEqual({ apiKey: 'secret' })
+    expect(JSON.parse(await readFile(join(root, 'opencode.json'), 'utf8')).provider.OpenAI).toEqual({
+      baseUrl: 'https://api.openai.com/v1',
+      apiType: 'openai-responses',
+      models: []
+    })
   })
 
   it('inserts new providers directly after the default provider', async () => {
@@ -94,6 +99,40 @@ describe('loadProviderManagerData', () => {
     }, [])
 
     expect(Object.keys(JSON.parse(await readFile(join(root, 'providers.json'), 'utf8')))).toEqual(['OpenAI', 'Renamed', 'Third'])
+  })
+
+  it('renames providers in global opencode config', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.jsonc'), JSON.stringify({
+      provider: {
+        Other: { baseUrl: 'https://example.com/v1', apiType: 'openai-compatible-chat', models: [] }
+      }
+    }))
+    await writeFile(join(root, 'providers.json'), JSON.stringify({
+      Other: { baseUrl: 'https://example.com/v1', apiType: 'openai-compatible-chat', models: [] }
+    }))
+
+    await saveProviderDraft(root, {
+      originalName: 'Other',
+      name: 'Renamed',
+      baseUrl: 'https://renamed.example.com/v1',
+      apiType: 'openai-compatible-chat',
+      apiKey: 'secret',
+      defaultModel: null,
+      models: [{ id: 'gpt-5', contextWindow: '256k', maxOutput: '128k', inputTypes: ['text'], reasoningEfforts: ['high'] }],
+      modelConfigDefaults: { contextWindow: '256k', maxOutput: '128k', inputTypes: ['text'], reasoningEfforts: ['high'] },
+      dirtyFields: new Set(['name']),
+      validationErrors: [],
+      protocolChanged: false
+    }, [])
+
+    const opencode = JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8'))
+    expect(opencode.provider.Other).toBeUndefined()
+    expect(opencode.provider.Renamed).toEqual({
+      baseUrl: 'https://renamed.example.com/v1',
+      apiType: 'openai-compatible-chat',
+      models: [{ id: 'gpt-5', contextWindow: '256k', maxOutput: '128k', inputTypes: ['text'], reasoningEfforts: ['high'] }]
+    })
   })
 
   it('preserves existing api key when editing without touching the api key field', async () => {

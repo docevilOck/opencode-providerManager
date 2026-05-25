@@ -1,5 +1,5 @@
 import { readOpencodeConfigSnapshot } from '../infra/opencode-config-reader.js'
-import { deleteGlobalProviderConfig, writeAuthConfig, writeGlobalAgentConfig, writeProvidersConfig, writeSettingsConfig } from '../infra/opencode-config-writer.js'
+import { deleteGlobalProviderConfig, writeAuthConfig, writeGlobalAgentConfig, writeGlobalProviderConfig, writeProvidersConfig, writeSettingsConfig } from '../infra/opencode-config-writer.js'
 import type { AgentModelSummary } from '../types/agent.js'
 import type { ManagedProviderSummary, OpencodeConfigSnapshot, ProviderEditDraft } from '../types/provider.js'
 import type { PageShellState, ValidationIssue } from '../types/tui.js'
@@ -99,6 +99,7 @@ export async function saveProviderDraft(root: string, draft: ProviderEditDraft, 
   await writeProvidersConfig(root, nextProvidersJson)
   await writeAuthConfig(root, authJson)
   await writeSettingsConfig(root, settingsJson)
+  await writeGlobalProviderConfig(root, draft.name, providerConfigFromDraft(draft), draft.originalName, current.globalOpencodeSource)
   const refreshed = await readOpencodeConfigSnapshot(root, [])
    return normalizeProviders(refreshed.providersJson, refreshed.settingsJson, refreshed.authJson, refreshed.globalOpencodeJson)
 }

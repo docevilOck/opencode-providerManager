@@ -108,6 +108,7 @@ describe('provider command session', () => {
 
   it('exposes runtime save handlers reachable from /provider command', async () => {
     const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
     let handler: (() => Promise<unknown>) | undefined
     registerProviderManagerPlugin({
       configRoot: root,
@@ -136,7 +137,6 @@ describe('provider command session', () => {
     expect(JSON.parse(await readFile(join(root, 'auth.json'), 'utf8')).OpenAI.apiKey).toBe('secret')
     expect(providerOutput).toContain('OpenAI')
 
-    await writeFile(join(root, 'opencode.jsonc'), '{"agent":{}}')
     const agentOutput = await session.handleAgentModelConfirm({
       agentName: 'reviewer',
       provider: 'OpenAI',
