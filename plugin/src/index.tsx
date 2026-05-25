@@ -5,9 +5,9 @@ import { buildModelOptionSet } from './core/agent-model-option-service.js'
 import { applyFetchedModelSelection, moveFetchModelSelection, selectAllFetchedModels, toggleFetchModelSelection } from './core/fetch-model-modal-service.js'
 import { availableProvidersForAgents } from './core/agent-provider-switch-service.js'
 import { activateSidebarPage, createTransientStatusLine, moveSidebarCursor, returnToSidebar, visibleScrollOffset, visibleStatusLine } from './core/page-state-service.js'
-import { deleteProvider, loadProviderManagerData, ProviderDraftValidationError, setDefaultProvider, type ProviderManagerData } from './core/provider-manager-service.js'
+import { loadProviderManagerData, ProviderDraftValidationError, setDefaultProvider, type ProviderManagerData } from './core/provider-manager-service.js'
 import { fetchProviderModels as fetchProviderModelsFromRemote, testProviderConnection } from './core/provider-runtime-service.js'
-import { handleAgentModelConfirmAction, handleAgentProviderSwitchAction, handleProviderSaveAction, renderProviderManagerShell } from './tui/provider-manager-shell.js'
+import { handleAgentModelConfirmAction, handleAgentProviderSwitchAction, handleProviderDeleteAction, handleProviderSaveAction, renderProviderManagerShell } from './tui/provider-manager-shell.js'
 import { backspaceAgentModelSearch, confirmAgentModelStep, createAgentModelDraft, escapeAgentModelStep, inputAgentModelSearch, moveAgentModelSelection, renderAgentModelPickerModal } from './tui/agent-model-picker-modal.js'
 import { renderAgentRow } from './tui/agent-row.js'
 import { renderProviderEditScreen } from './tui/provider-edit-screen.js'
@@ -963,27 +963,24 @@ async function tui(api: ProviderManagerTuiApi) {
       warnUnavailable('delete', currentData)
       return
     }
-    const confirmed = await selectValue(api, `Delete provider ${provider.name}?`, [
-      { title: 'Delete provider', value: true },
-      { title: 'Cancel', value: false }
-    ], () => lockModal({ kind: 'provider-delete-confirm', providerName: provider.name, isDefault: provider.isDefault }), unlockModal)
-    if (!confirmed) return
+    lockModal({ kind: 'provider-delete-confirm', providerName: provider.name, isDefault: provider.isDefault })
+  }
+
+  async function confirmProviderDelete() {
+    const currentData = data()
+    const modal = currentData?.shell.modalState
+    if (!currentData || modal?.kind !== 'provider-delete-confirm') return
+    const provider = currentData.providers.find((candidate) => candidate.name.toLowerCase() === modal.providerName.toLowerCase())
+    if (!provider) {
+      setShell(statusShell(closeShellModal(currentData.shell), 'Provider no longer exists', 'warn'))
+      return
+    }
     if (provider.isDefault) {
       setShell(statusShell(currentData.shell, 'Switch default provider before deleting this provider', 'warn'))
       return
     }
     try {
-      await deleteProvider(root, provider.name)
-      const refreshed = await loadProviderManagerData(root, builtinAgents)
-      const nextIndex = Math.max(0, Math.min(refreshed.providers.length - 1, selected))
-      setData(replaceShell(refreshed, {
-        ...currentData.shell,
-        pageStates: {
-          ...currentData.shell.pageStates,
-          provider: { ...currentData.shell.pageStates.provider, selectedIndex: nextIndex }
-        },
-        statusLine: { message: `${provider.name} deleted`, level: 'info' }
-      }))
+      setData(await handleProviderDeleteAction(root, currentData, provider.name, builtinAgents))
     } catch (error) {
       setShell(statusShell(currentData.shell, error instanceof Error ? error.message : String(error), 'error'))
     }
@@ -1343,6 +1340,7 @@ async function tui(api: ProviderManagerTuiApi) {
       } },
       { name: 'provider-manager.modal.edit', title: 'Edit modal field', category: 'Provider', run: () => {
         if (data()?.shell.modalState?.kind === 'agent-provider-switch') return void confirmAgentProviderSwitch()
+        if (data()?.shell.modalState?.kind === 'provider-delete-confirm') return void confirmProviderDelete()
         if (data()?.shell.modalState?.kind === 'model-list') return startEditModel()
         if (data()?.shell.modalState?.kind === 'model-config-defaults') return void editSelectedModelDefaultField()
         confirmFetchModelsModal()

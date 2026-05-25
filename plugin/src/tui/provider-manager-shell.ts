@@ -4,7 +4,7 @@ import type { PageShellState } from '../types/tui.js'
 import { renderAgentModelConfigScreen } from './agent-model-config-screen.js'
 import { renderSidebar } from './page-sidebar.js'
 import { renderProviderHomeScreen } from './provider-home-screen.js'
-import { reloadProviderManagerData, saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
+import { deleteProvider, reloadProviderManagerData, saveAgentModelConfig, saveProviderDraft, type ProviderManagerData } from '../core/provider-manager-service.js'
 import { buildAgentProviderSwitchConfigs } from '../core/agent-provider-switch-service.js'
 import { visibleStatusLine } from '../core/page-state-service.js'
 import { keyHint, titleLine } from './theme.js'
@@ -83,4 +83,20 @@ export async function handleAgentProviderSwitchAction(root: string, view: Provid
     agentBulkEdit: { enabled: false, selectedAgentNames: new Set() }
   }, 'agents')
   return reloadProviderManagerData(root, builtinAgents, shell)
+}
+
+export async function handleProviderDeleteAction(root: string, view: ProviderManagerData, providerName: string, builtinAgents: unknown[] = view.snapshot.builtinAgents): Promise<ProviderManagerData> {
+  const selectedIndex = view.shell.pageStates.provider.selectedIndex
+  await deleteProvider(root, providerName)
+  const refreshed = await reloadProviderManagerData(root, builtinAgents, returnToPageContent(view.shell, 'provider'))
+  const nextIndex = Math.max(0, Math.min(refreshed.providers.length - 1, selectedIndex))
+  const shell = {
+    ...refreshed.shell,
+    pageStates: {
+      ...refreshed.shell.pageStates,
+      provider: { ...refreshed.shell.pageStates.provider, selectedIndex: nextIndex }
+    },
+    statusLine: { message: `${providerName} deleted`, level: 'info' as const }
+  }
+  return { ...refreshed, shell }
 }

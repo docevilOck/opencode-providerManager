@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { handleAgentModelConfirmAction, handleAgentProviderSwitchAction, handleProviderSaveAction, renderProviderManagerShell } from './provider-manager-shell.js'
+import { handleAgentModelConfirmAction, handleAgentProviderSwitchAction, handleProviderDeleteAction, handleProviderSaveAction, renderProviderManagerShell } from './provider-manager-shell.js'
 import { createInitialPageShellState } from '../core/page-state-service.js'
 import { loadProviderManagerData } from '../core/provider-manager-service.js'
 
@@ -161,5 +161,32 @@ describe('renderProviderManagerShell', () => {
     expect(next.agents.map((agent) => `${agent.provider}/${agent.model}`)).toEqual(['Ray/gpt-5.4', 'Ray/gpt-5.4-mini'])
     expect(next.shell.agentBulkEdit).toEqual({ enabled: false, selectedAgentNames: new Set() })
     expect(next.shell.activePage).toBe('agents')
+  })
+
+  it('connects provider delete confirmation to config files and closes modal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'provider-manager-'))
+    await writeFile(join(root, 'providers.json'), JSON.stringify({
+      OpenAI: { baseUrl: 'https://api.openai.com/v1', apiType: 'openai-responses', models: [] },
+      Other: { baseUrl: 'https://example.com/v1', apiType: 'openai-compatible-chat', models: [] }
+    }))
+    await writeFile(join(root, 'auth.json'), JSON.stringify({
+      OpenAI: { apiKey: 'openai-key' },
+      Other: { apiKey: 'other-key' }
+    }))
+    const view = await loadProviderManagerData(root, [])
+    view.shell.focusRegion = 'modal'
+    view.shell.modalState = { kind: 'provider-delete-confirm', providerName: 'Other', isDefault: false }
+    view.shell.pageStates.provider.selectedIndex = 1
+
+    const next = await handleProviderDeleteAction(root, view, 'Other')
+
+    expect(JSON.parse(await readFile(join(root, 'providers.json'), 'utf8')).Other).toBeUndefined()
+    expect(JSON.parse(await readFile(join(root, 'auth.json'), 'utf8')).Other).toBeUndefined()
+    expect(next.providers.map((provider) => provider.name)).toEqual(['OpenAI'])
+    expect(next.shell.activePage).toBe('provider')
+    expect(next.shell.focusRegion).toBe('content')
+    expect(next.shell.modalState).toBeNull()
+    expect(next.shell.pageStates.provider.selectedIndex).toBe(0)
+    expect(next.shell.statusLine?.message).toBe('Other deleted')
   })
 })
