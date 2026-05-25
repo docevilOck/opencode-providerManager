@@ -31,6 +31,37 @@ function providerConfigFromDraft(draft: ProviderEditDraft): Record<string, unkno
   }
 }
 
+function sizeToTokenLimit(value: string): number | undefined {
+  const match = value.trim().toLowerCase().match(/^(\d+)(k|m)?$/)
+  if (!match) return undefined
+  const base = Number(match[1])
+  if (!Number.isFinite(base)) return undefined
+  if (match[2] === 'm') return base * 1000000
+  if (match[2] === 'k') return base * 1000
+  return base
+}
+
+function globalProviderConfigFromDraft(draft: ProviderEditDraft, apiKey?: string): Record<string, unknown> {
+  const models = Object.fromEntries(draft.models.map((model) => {
+    const context = sizeToTokenLimit(model.contextWindow)
+    const output = sizeToTokenLimit(model.maxOutput)
+    const variants = Object.fromEntries(model.reasoningEfforts.map((effort) => [effort, { reasoningEffort: effort }]))
+    return [model.id, {
+      name: model.id,
+      ...(context || output ? { limit: { ...(context ? { context } : {}), ...(output ? { output } : {}) } } : {}),
+      ...(model.reasoningEfforts.length > 0 ? { reasoning: true, variants } : {})
+    }]
+  }))
+  return {
+    npm: '@ai-sdk/openai',
+    options: {
+      ...(apiKey ? { apiKey } : {}),
+      baseURL: draft.baseUrl
+    },
+    models
+  }
+}
+
 function upsertProviderConfig(providersJson: Record<string, unknown>, draft: ProviderEditDraft, defaultProvider?: string): Record<string, unknown> {
   const next: Record<string, unknown> = {}
   const providerConfig = providerConfigFromDraft(draft)
@@ -96,10 +127,11 @@ export async function saveProviderDraft(root: string, draft: ProviderEditDraft, 
   const shouldWriteApiKey = !draft.originalName || draft.dirtyFields.has('apiKey') || draft.apiKey.length > 0 || typeof existingAuth.apiKey !== 'string'
   if (shouldWriteApiKey) authJson[draft.name] = { apiKey: draft.apiKey }
   else authJson[draft.name] = existingAuth
+  const nextAuthEntry = typeof authJson[draft.name] === 'object' && authJson[draft.name] !== null ? authJson[draft.name] as Record<string, unknown> : {}
   await writeProvidersConfig(root, nextProvidersJson)
   await writeAuthConfig(root, authJson)
   await writeSettingsConfig(root, settingsJson)
-  await writeGlobalProviderConfig(root, draft.name, providerConfigFromDraft(draft), draft.originalName, current.globalOpencodeSource)
+  await writeGlobalProviderConfig(root, draft.name, globalProviderConfigFromDraft(draft, typeof nextAuthEntry.apiKey === 'string' ? nextAuthEntry.apiKey : undefined), draft.originalName, current.globalOpencodeSource)
   const refreshed = await readOpencodeConfigSnapshot(root, [])
    return normalizeProviders(refreshed.providersJson, refreshed.settingsJson, refreshed.authJson, refreshed.globalOpencodeJson)
 }

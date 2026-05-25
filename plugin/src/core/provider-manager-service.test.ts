@@ -45,9 +45,12 @@ describe('loadProviderManagerData', () => {
     const auth = JSON.parse(await readFile(join(root, 'auth.json'), 'utf8'))
     expect(auth.OpenAI).toEqual({ apiKey: 'secret' })
     expect(JSON.parse(await readFile(join(root, 'opencode.json'), 'utf8')).provider.OpenAI).toEqual({
-      baseUrl: 'https://api.openai.com/v1',
-      apiType: 'openai-responses',
-      models: []
+      npm: '@ai-sdk/openai',
+      options: {
+        apiKey: 'secret',
+        baseURL: 'https://api.openai.com/v1'
+      },
+      models: {}
     })
   })
 
@@ -129,9 +132,19 @@ describe('loadProviderManagerData', () => {
     const opencode = JSON.parse(await readFile(join(root, 'opencode.jsonc'), 'utf8'))
     expect(opencode.provider.Other).toBeUndefined()
     expect(opencode.provider.Renamed).toEqual({
-      baseUrl: 'https://renamed.example.com/v1',
-      apiType: 'openai-compatible-chat',
-      models: [{ id: 'gpt-5', contextWindow: '256k', maxOutput: '128k', inputTypes: ['text'], reasoningEfforts: ['high'] }]
+      npm: '@ai-sdk/openai',
+      options: {
+        apiKey: 'secret',
+        baseURL: 'https://renamed.example.com/v1'
+      },
+      models: {
+        'gpt-5': {
+          name: 'gpt-5',
+          limit: { context: 256000, output: 128000 },
+          reasoning: true,
+          variants: { high: { reasoningEffort: 'high' } }
+        }
+      }
     })
   })
 
