@@ -1,5 +1,5 @@
 {
-  "name": "@docevilock/opencode-provider-manager",
+  "name": "@docevil/opencode-provider-manager",
   "version": "0.1.0",
   "type": "module",
   "description": "OpenCode TUI plugin for inspecting and managing providers and agent model bindings.",

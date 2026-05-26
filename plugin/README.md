@@ -1,6 +1,6 @@
-# @docevilock/opencode-provider-manager
+# @docevil/opencode-provider-manager
 
-`@docevilock/opencode-provider-manager` is an OpenCode TUI plugin that adds a `/provider` entry for inspecting and managing provider definitions and agent model bindings.
+`@docevil/opencode-provider-manager` is an OpenCode TUI plugin that adds a `/provider` entry for inspecting and managing provider definitions and agent model bindings.
 
 ## Install
 
@@ -9,7 +9,7 @@ Add the package to your OpenCode config:
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@docevilock/opencode-provider-manager"]
+  "plugin": ["@docevil/opencode-provider-manager"]
 }
 ```
 

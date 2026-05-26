@@ -17,7 +17,7 @@
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@docevilock/opencode-provider-manager"]
+  "plugin": ["@docevil/opencode-provider-manager"]
 }
 ```
 
