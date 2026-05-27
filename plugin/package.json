@@ -1,6 +1,6 @@
 {
   "name": "@docevil/opencode-provider-manager",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "OpenCode TUI plugin for inspecting and managing providers and agent model bindings.",
   "main": "./dist/index.js",
